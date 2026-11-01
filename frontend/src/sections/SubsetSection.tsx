@@ -7,9 +7,10 @@ export default function SubsetSection() {
   return (
     <section
       id="scene-subset"
-      className="relative flex h-screen w-full items-center p-6 sm:p-12 lg:p-20 z-10"
+      className="relative flex h-screen w-full items-center justify-end p-6 sm:p-12 lg:pr-24 z-10"
     >
-      <div className="max-w-xl rounded-2xl border border-[#1C2430] bg-[#0E1218]/85 p-8 backdrop-blur-xl shadow-2xl">
+      {/* Soft gradient scrim behind copy block */}
+      <div className="relative max-w-xl rounded-2xl border border-[#1C2430] bg-[#0E1218]/90 p-8 backdrop-blur-2xl shadow-[0_0_50px_rgba(7,9,13,0.95)] before:absolute before:-inset-4 before:-z-10 before:rounded-3xl before:bg-gradient-to-l before:from-[#07090D]/90 before:to-transparent before:blur-xl">
         <span className="font-mono text-xs uppercase tracking-widest text-[#6AA7FF]">
           03 // Subset Construction
         </span>

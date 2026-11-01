@@ -44,9 +44,14 @@ function AutomataNode({
 
   return (
     <>
+      {/* Bidirectional Multi-port Handles for Clean Flow Routing */}
       <Handle id="target-left" type="target" position={Position.Left} className="!opacity-0" />
+      <Handle id="source-left" type="source" position={Position.Left} className="!opacity-0" />
+      <Handle id="target-right" type="target" position={Position.Right} className="!opacity-0" />
       <Handle id="source-right" type="source" position={Position.Right} className="!opacity-0" />
       <Handle id="target-top" type="target" position={Position.Top} className="!opacity-0" />
+      <Handle id="source-top" type="source" position={Position.Top} className="!opacity-0" />
+      <Handle id="target-bottom" type="target" position={Position.Bottom} className="!opacity-0" />
       <Handle id="source-bottom" type="source" position={Position.Bottom} className="!opacity-0" />
 
       <div
@@ -170,14 +175,26 @@ function createLayout(
 
     const strokeColor = hasEps ? '#FFB547' : isTrapEdge ? '#7C8696' : '#6AA7FF'
 
+    const sourcePos = graph.node(group.from) ?? { x: 0, y: 0 }
+    const targetPos = graph.node(group.to) ?? { x: 0, y: 0 }
+    const isBackward = !isSelfLoop && sourcePos.x > targetPos.x
+
     return {
       id: `edge-${index}-${group.from}-${group.to}`,
       source: group.from,
       target: group.to,
-      sourceHandle: isSelfLoop ? 'source-bottom' : 'source-right',
-      targetHandle: isSelfLoop ? 'target-top' : 'target-left',
+      sourceHandle: isSelfLoop
+        ? 'source-top'
+        : isBackward
+          ? 'source-top'
+          : 'source-right',
+      targetHandle: isSelfLoop
+        ? 'target-right'
+        : isBackward
+          ? 'target-top'
+          : 'target-left',
       label: group.labels.join(', '),
-      type: isSelfLoop ? 'smoothstep' : 'bezier',
+      type: isSelfLoop || isBackward ? 'smoothstep' : 'bezier',
       animated: hasEps,
       markerEnd: {
         type: MarkerType.ArrowClosed,

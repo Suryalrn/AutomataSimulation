@@ -218,12 +218,21 @@ export function simulateDFAInBrowser(
 
   for (let i = 0; i < cleanInput.length; i++) {
     const symbol = cleanInput[i]
+
+    // Validate symbol belongs to the alphabet
+    if (!dfa.alphabet.includes(symbol)) {
+      throw new Error(
+        `Invalid input symbol: '${symbol}'. It is not in the alphabet [${dfa.alphabet.join(', ')}].`,
+      )
+    }
+
     const currKey = stateKey(currentState)
 
     const transition = dfa.transitions.find(
       (t) => stateKey(t.from) === currKey && t.symbol === symbol,
     )
 
+    // In a complete DFA, missing transitions default to trap state []
     const nextState = transition ? transition.to : []
 
     trace.push({
@@ -234,9 +243,6 @@ export function simulateDFAInBrowser(
     })
 
     currentState = nextState
-    if (currentState.length === 0) {
-      break
-    }
   }
 
   const finalKey = stateKey(currentState)

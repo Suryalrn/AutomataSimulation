@@ -13,9 +13,9 @@ export default function SceneCanvas() {
   const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
-    // Check mobile user agent and DPR
+    // Check viewport width for mobile breakpoint
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768 || window.devicePixelRatio < 1.5)
+      setIsMobile(window.innerWidth < 768)
     }
     checkMobile()
     window.addEventListener('resize', checkMobile)

@@ -345,32 +345,40 @@ export default function StoryContainer({ onLaunchApp }: StoryContainerProps) {
       {/* SECTION 0: HERO (100vh) */}
       <HeroSection onLaunchApp={handleLaunch} onExplore={handleExplore} />
 
-      {/* Floating Precision Chapter HUD (Visible when inside pinned story) */}
+      {/* Compact Right-Side Stage Nav: Dots only, label appears for active item */}
       <aside
-        className={`fixed right-6 top-1/2 -translate-y-1/2 z-40 hidden md:flex flex-col items-end gap-3 transition-all duration-500 pointer-events-auto ${
+        className={`fixed right-4 top-1/2 -translate-y-1/2 z-40 hidden md:flex flex-col items-end gap-3 transition-all duration-500 pointer-events-auto ${
           isInsideStory ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8 pointer-events-none'
         }`}
         aria-label="Story chapters"
       >
-        <div className="rounded-2xl border border-[#1C2430] bg-[#0E1218]/90 p-2.5 backdrop-blur-xl shadow-2xl space-y-1.5">
+        <div className="flex flex-col items-end gap-3 p-1">
           {CHAPTERS.map((ch) => {
             const isActive = currentSceneIndex === ch.id
             return (
               <button
                 key={ch.id}
                 onClick={() => handleChapterClick(ch.id)}
-                className={`group flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-mono transition-all duration-200 cursor-pointer ${
-                  isActive
-                    ? 'bg-[#5CF2C0]/15 text-[#5CF2C0] font-bold border border-[#5CF2C0]/30 shadow-[0_0_12px_rgba(92,242,192,0.2)]'
-                    : 'text-[#7C8696] hover:text-[#E8ECF2] hover:bg-[#1C2430]/60 border border-transparent'
-                }`}
-                title={`Jump to ${ch.name}`}
+                className="group flex items-center gap-2 cursor-pointer transition-all duration-300"
+                title={ch.name}
               >
-                <span className="text-[10px] tracking-widest">{ch.tag}</span>
-                <span className="text-[11px] font-sans font-medium">{ch.name}</span>
+                {/* Label appears ONLY for active item or on hover */}
                 <span
-                  className={`h-1.5 w-1.5 rounded-full transition-transform duration-300 ${
-                    isActive ? 'bg-[#5CF2C0] scale-125' : 'bg-[#7C8696]/40 group-hover:bg-[#E8ECF2]'
+                  className={`font-mono text-[10px] tracking-wider transition-all duration-200 pointer-events-none select-none ${
+                    isActive
+                      ? 'opacity-100 translate-x-0 text-[#5CF2C0] font-bold bg-[#0E1218]/95 border border-[#5CF2C0]/40 px-2 py-0.5 rounded-md shadow-[0_0_12px_rgba(92,242,192,0.25)]'
+                      : 'opacity-0 -translate-x-2 text-[#7C8696] group-hover:opacity-100 group-hover:translate-x-0 bg-[#0E1218]/90 px-1.5 py-0.5 rounded border border-[#1C2430]'
+                  }`}
+                >
+                  {ch.tag} {ch.name}
+                </span>
+
+                {/* Dot */}
+                <span
+                  className={`rounded-full transition-all duration-300 ${
+                    isActive
+                      ? 'h-3 w-3 bg-[#5CF2C0] shadow-[0_0_12px_#5CF2C0] ring-2 ring-[#5CF2C0]/30'
+                      : 'h-1.5 w-1.5 bg-[#7C8696]/50 group-hover:bg-[#E8ECF2] group-hover:scale-125'
                   }`}
                 />
               </button>

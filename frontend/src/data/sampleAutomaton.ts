@@ -85,7 +85,7 @@ export const NFA_3D_NODES: AutomatonNodeData[] = [
     isStart: false,
     isAccept: false,
     position: [1.6, 1.6, -0.2],
-    dfaTargetPos: [0.5, 1.8, -0.4],
+    dfaTargetPos: [-0.6, 2.0, -0.3],
     dfaClusterId: 'D_3',
   },
   {
@@ -95,8 +95,8 @@ export const NFA_3D_NODES: AutomatonNodeData[] = [
     isStart: false,
     isAccept: true,
     position: [4.2, -0.2, 0.4],
-    dfaTargetPos: [4.0, -0.3, 0.2],
-    dfaClusterId: 'D_accept',
+    dfaTargetPos: [3.8, 0.2, 0.1],
+    dfaClusterId: 'D_4',
   },
 ]
 
@@ -150,31 +150,25 @@ export const SAMPLE_DFA = {
     { from: 'D_012', symbol: '0', to: 'D_124' },
     { from: 'D_012', symbol: '1', to: 'D_3' },
     { from: 'D_124', symbol: '0', to: 'D_124' },
-    { from: 'D_124', symbol: '1', to: 'D_4' },
+    { from: 'D_124', symbol: '1', to: 'D_3' },
     { from: 'D_3', symbol: '0', to: 'D_trap' },
     { from: 'D_3', symbol: '1', to: 'D_4' },
     { from: 'D_4', symbol: '0', to: 'D_trap' },
     { from: 'D_4', symbol: '1', to: 'D_trap' },
-    { from: 'D_trap', symbol: '0, 1', to: 'D_trap' },
+    { from: 'D_trap', symbol: '0', to: 'D_trap' },
+    { from: 'D_trap', symbol: '1', to: 'D_trap' },
   ] as DFATransition[],
 }
 
 export const SIMULATION_TRACE = {
-  inputString: '0110',
+  inputString: '0011',
   steps: [
-    { stepIndex: 0, char: '0', stateId: 'D_012', nextStateId: 'D_124', isAccept: false },
-    { stepIndex: 1, char: '1', stateId: 'D_124', nextStateId: 'D_4', isAccept: true },
-    { stepIndex: 2, char: '1', stateId: 'D_4', nextStateId: 'D_trap', isAccept: false }, // branching demo
+    { stepIndex: 0, char: '0', fromStateId: 'D_012', toStateId: 'D_124', toStateSet: '{q1, q2, q4}', isAccept: true },
+    { stepIndex: 1, char: '0', fromStateId: 'D_124', toStateId: 'D_124', toStateSet: '{q1, q2, q4}', isAccept: true },
+    { stepIndex: 2, char: '1', fromStateId: 'D_124', toStateId: 'D_3', toStateSet: '{q3}', isAccept: false },
+    { stepIndex: 3, char: '1', fromStateId: 'D_3', toStateId: 'D_4', toStateSet: '{q4}', isAccept: true },
   ],
-  // Complete 0110 path:
-  // Step 0: start at D_012
-  // Read '0' -> D_124
-  // Read '1' -> D_4
-  // If loop on accept state D_4 on 0:
-  // Let's have input '010' or '011':
-  // In the demo string "011":
-  // D_012 -('0')-> D_124 -('1')-> D_4. Accepted!
-  demoInput: '01',
+  demoInput: '0011',
 }
 
 export const ARCHITECTURE_SLABS = [
@@ -203,4 +197,3 @@ export const ARCHITECTURE_SLABS = [
     details: ['Depth-first ε-closure computation', 'Power-set state hashing', 'Deterministic string traversal'],
   },
 ]
-

@@ -33,13 +33,6 @@ export default function ConversionHistory({ steps, onStepChange }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
   const [speed, setSpeed] = useState<number>(1200) // ms
-  const [prevSteps, setPrevSteps] = useState(steps)
-
-  if (steps !== prevSteps) {
-    setPrevSteps(steps)
-    setCurrentIndex(0)
-    setIsPlaying(false)
-  }
 
   useEffect(() => {
     if (steps.length === 0) return

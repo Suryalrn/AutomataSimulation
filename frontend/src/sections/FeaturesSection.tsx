@@ -37,13 +37,13 @@ export default function FeaturesSection() {
       <div className="mx-auto max-w-6xl">
         <div className="text-center">
           <span className="font-mono text-xs uppercase tracking-widest text-[#5CF2C0]">
-            07 // Engineering Capabilities
+            07 // System Capabilities
           </span>
           <h2 className="mt-3 font-sans text-3xl sm:text-5xl font-bold tracking-tight text-[#E8ECF2]">
-            Built for students, educators, and engineers.
+            Everything the conversion needs.
           </h2>
           <p className="mt-4 max-w-xl mx-auto text-sm sm:text-base text-[#7C8696]">
-            Every tool required to master Theory of Computation concepts in a single unified interface.
+            Automated ε-closure expansion, subset construction, and deterministic execution tracing.
           </p>
         </div>
 

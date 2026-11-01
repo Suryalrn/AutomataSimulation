@@ -95,8 +95,16 @@ export default function StringSimulator({
     } catch {
       // 2. Seamless in-browser fallback engine if C++ server is offline
       if (dfaResult) {
-        const localSim = simulateDFAInBrowser(dfaResult, effectiveInput)
-        setResult(localSim)
+        try {
+          const localSim = simulateDFAInBrowser(dfaResult, effectiveInput)
+          setResult(localSim)
+        } catch (simErr: unknown) {
+          setError(
+            simErr instanceof Error
+              ? simErr.message
+              : 'String simulation failed.',
+          )
+        }
       } else {
         setError('Please convert the NFA to a DFA first or start the backend service.')
       }

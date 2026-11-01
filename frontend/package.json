@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "verify": "node scripts/verifyAutomaton.js && node scripts/testEdgeCases.js",
+    "build": "node scripts/verifyAutomaton.js && node scripts/testEdgeCases.js && tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview"
   },

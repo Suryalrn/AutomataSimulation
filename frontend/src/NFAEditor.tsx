@@ -238,6 +238,7 @@ export default function NFAEditor({
       .split(',')
       .map((s) => s.trim())
       .filter((s) => {
+        if (s === '') return false
         const num = Number(s)
         return Number.isInteger(num) && num >= 0 && num < validCount
       })
@@ -303,13 +304,18 @@ export default function NFAEditor({
     setHighlightedDFAStateIds([])
 
     const alphabetSymbols = [
-      ...new Set(alphabet.replace(/\s/g, '').split('')),
-    ].filter(Boolean)
+      ...new Set(
+        (alphabet.includes(',')
+          ? alphabet.split(',').map((s) => s.trim())
+          : alphabet.replace(/\s/g, '').split('')
+        ).filter(Boolean),
+      ),
+    ]
 
     const finalStateIds = finalStates
       .split(',')
       .map((value) => value.trim())
-      .filter(Boolean)
+      .filter((s) => s !== '')
       .map(Number)
 
     if (!Number.isInteger(stateCount) || stateCount < 1 || stateCount > 50) {
@@ -339,6 +345,20 @@ export default function NFAEditor({
       )
     ) {
       setError('Alphabet must contain single-character symbols (excluding ε).')
+      return
+    }
+
+    const invalidTrans = transitions.find(
+      (t) =>
+        t.symbol !== 'eps' &&
+        t.symbol !== 'epsilon' &&
+        t.symbol !== 'ε' &&
+        !alphabetSymbols.includes(t.symbol),
+    )
+    if (invalidTrans) {
+      setError(
+        `Transition symbol '${invalidTrans.symbol}' from q${invalidTrans.from} is not in the alphabet [${alphabetSymbols.join(', ')}].`,
+      )
       return
     }
 
@@ -830,19 +850,31 @@ export default function NFAEditor({
 
         {/* TAB 3: STEP TRACE DEBUGGER */}
         {activeTab === 'history' && result && (
-          <ConversionHistory steps={result.history} onStepChange={handleHistoryStepChange} />
+          <ConversionHistory
+            key={`history-${result.history.length}-${result.dfa.states.length}`}
+            steps={result.history}
+            onStepChange={handleHistoryStepChange}
+          />
         )}
 
         {/* TAB 4: STRING SIMULATOR */}
         {activeTab === 'simulator' && (
           <StringSimulator
             states={states}
-            alphabet={[...new Set(alphabet.replace(/\s/g, '').split(''))].filter(Boolean)}
+            alphabet={[
+              ...new Set(
+                (alphabet.includes(',')
+                  ? alphabet.split(',').map((s) => s.trim())
+                  : alphabet.replace(/\s/g, '').split('')
+                ).filter(Boolean),
+              ),
+            ]}
             startState={startState}
             finalStates={finalStates
               .split(',')
-              .map((v) => Number(v.trim()))
-              .filter(Number.isInteger)}
+              .map((v) => v.trim())
+              .filter((v) => v !== '' && Number.isInteger(Number(v)))
+              .map(Number)}
             transitions={transitions.map((t) => ({
               from: t.from,
               to: t.to,

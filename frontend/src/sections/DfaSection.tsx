@@ -2,9 +2,10 @@ export default function DfaSection() {
   return (
     <section
       id="scene-dfa"
-      className="relative flex h-screen w-full items-center justify-end p-6 sm:p-12 lg:p-20 z-10"
+      className="relative flex h-screen w-full items-center justify-start p-6 sm:p-12 lg:pl-20 z-10"
     >
-      <div className="max-w-xl rounded-2xl border border-[#1C2430] bg-[#0E1218]/85 p-8 backdrop-blur-xl shadow-2xl">
+      {/* Soft gradient scrim behind copy block */}
+      <div className="relative max-w-xl rounded-2xl border border-[#1C2430] bg-[#0E1218]/90 p-8 backdrop-blur-2xl shadow-[0_0_50px_rgba(7,9,13,0.95)] before:absolute before:-inset-4 before:-z-10 before:rounded-3xl before:bg-gradient-to-r before:from-[#07090D]/90 before:to-transparent before:blur-xl">
         <span className="font-mono text-xs uppercase tracking-widest text-[#5CF2C0]">
           04 // The DFA
         </span>
@@ -15,9 +16,9 @@ export default function DfaSection() {
         </h2>
 
         <p className="mt-5 text-sm sm:text-base leading-relaxed text-[#7C8696]">
-          The conversion produces a mathematically complete DFA. Each state now possesses exactly
-          one unique outgoing transition per alphabet symbol. Any invalid trajectory terminates
-          in a dim trap state (<span className="font-mono text-[#FF5C7A]">∅</span>).
+          The conversion produces a mathematically complete DFA. Each state possesses exactly
+          one unique outgoing transition per alphabet symbol. Invalid trajectories terminate
+          in a dim trap state (<span className="font-mono text-[#FF5C7A]">∅</span>) with complete self-loops.
         </p>
 
         <div className="mt-6 grid grid-cols-3 gap-3 border-t border-[#1C2430] pt-4 font-mono text-xs text-center">
