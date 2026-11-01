@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
 
-const API_URL = import.meta.env.VITE_API_URL
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:18080'
 
 export default function BackendStatus() {
   const [status, setStatus] = useState<'checking' | 'online' | 'offline'>(
@@ -13,7 +13,7 @@ export default function BackendStatus() {
 
     async function checkBackend() {
       try {
-        await axios.get(`${API_URL}/api/health`)
+        await axios.get(`${API_URL}/api/health`, { timeout: 3000 })
         if (active) setStatus('online')
       } catch {
         if (active) setStatus('offline')

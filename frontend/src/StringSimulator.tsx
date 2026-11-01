@@ -29,7 +29,7 @@ type Props = {
   transitions: Transition[]
 }
 
-const API_URL = import.meta.env.VITE_API_URL
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:18080'
 
 function formatState(state: number[]) {
   return state.length
@@ -53,13 +53,16 @@ export default function StringSimulator({
     setError('')
     setResult(null)
 
+    // Standardize input string (treat "#" as empty string if entered)
+    const effectiveInput = input === '#' ? '' : input
+
     const payload = {
       states,
       alphabet,
       start_state: startState,
       final_states: finalStates,
       transitions,
-      input,
+      input: effectiveInput,
     }
 
     setLoading(true)
@@ -104,7 +107,7 @@ export default function StringSimulator({
             setResult(null)
             setError('')
           }}
-          placeholder="Enter a string (empty string is allowed)"
+          placeholder="Enter a string (leave blank or # for empty string)"
           className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-900 p-3 outline-none focus:border-indigo-500"
         />
 

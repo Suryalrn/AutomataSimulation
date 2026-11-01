@@ -40,11 +40,14 @@ export default function ConversionHistory({
 }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [prevSteps, setPrevSteps] = useState(steps)
 
-  useEffect(() => {
+  // Sync state cleanly when steps change without cascading useEffect renders
+  if (steps !== prevSteps) {
+    setPrevSteps(steps)
     setCurrentIndex(0)
     setIsPlaying(false)
-  }, [steps])
+  }
 
   useEffect(() => {
     if (steps.length === 0) return
@@ -58,16 +61,17 @@ export default function ConversionHistory({
   }, [currentIndex, steps, onStepChange])
 
   useEffect(() => {
-    if (!isPlaying || steps.length === 0) return
-
-    if (currentIndex >= steps.length - 1) {
-      setIsPlaying(false)
+    if (!isPlaying || steps.length === 0 || currentIndex >= steps.length - 1) {
       return
     }
 
     const timer = window.setTimeout(() => {
       setCurrentIndex((index) => {
-        return Math.min(index + 1, steps.length - 1)
+        const next = Math.min(index + 1, steps.length - 1)
+        if (next >= steps.length - 1) {
+          setIsPlaying(false)
+        }
+        return next
       })
     }, 1200)
 
@@ -124,199 +128,186 @@ export default function ConversionHistory({
   }
 
   return (
-    <section className="space-y-5 rounded-xl border border-zinc-800 bg-[#111114] p-6">
+    <section className="space-y-6 rounded-xl border border-zinc-800 bg-[#111114] p-6">
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h3 className="text-lg font-semibold">
-            Interactive Conversion History
+            Conversion step trace
           </h3>
-
-          <p className="mt-1 text-xs text-zinc-500">
-            Explore subset construction operation by operation.
+          <p className="mt-1 text-sm text-zinc-500">
+            Step-by-step trace of the Subset Construction algorithm.
           </p>
         </div>
 
-        <span className="rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-3 py-2 text-xs font-semibold text-indigo-400">
-          {currentStep.operation}
-        </span>
-      </div>
-
-      <div>
-        <div className="mb-2 flex justify-between text-xs text-zinc-500">
-          <span>
-            Step {currentIndex + 1} of {steps.length}
-          </span>
-
-          <span>{Math.round(progress)}% completed</span>
-        </div>
-
-        <div className="h-2 overflow-hidden rounded-full bg-zinc-800">
-          <div
-            className="h-full rounded-full bg-indigo-500 transition-all duration-300"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      </div>
-
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-        <div className="mb-3 flex items-center gap-2">
-          <Play size={16} className="text-indigo-400" />
-
-          <span className="text-sm font-semibold">
-            Current operation
-          </span>
-        </div>
-
-        <h4 className="text-base font-semibold text-indigo-300">
-          {currentStep.operation.replaceAll('_', ' ')}
-        </h4>
-
-        <p className="mt-2 text-sm leading-6 text-zinc-400">
-          {currentStep.description}
-        </p>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        <DetailCard
-          label="Current state"
-          value={formatState(currentStep.current_state)}
-        />
-
-        <DetailCard
-          label="Input symbol"
-          value={
-            currentStep.symbol === 'eps'
-              ? 'ε (Epsilon)'
-              : currentStep.symbol
-          }
-        />
-
-        <DetailCard
-          label="Move result"
-          value={formatState(currentStep.moved_states)}
-        />
-
-        <DetailCard
-          label="Epsilon closure"
-          value={formatState(currentStep.closure_states)}
-        />
-      </div>
-
-      <div className="rounded-xl border border-green-500/30 bg-green-500/5 p-5">
-        <div className="mb-3 flex items-center gap-2">
-          <CheckCircle2
-            size={18}
-            className="text-green-400"
-          />
-
-          <span className="text-sm font-semibold text-green-400">
-            Next DFA state
-          </span>
-        </div>
-
-        <p className="text-2xl font-bold text-green-300">
-          {formatState(currentStep.next_state)}
-        </p>
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-3">
-
-        <button
-          onClick={resetHistory}
-          disabled={isFirst && !isPlaying}
-          className="flex items-center gap-2 rounded-lg border border-zinc-700 px-4 py-3 text-sm text-zinc-300 transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-30"
-        >
-          <RotateCcw size={16} />
-          Restart
-        </button>
-
-        <div className="flex flex-wrap gap-2">
-
+        <div className="flex items-center gap-2">
           <button
             onClick={previousStep}
             disabled={isFirst}
-            className="flex items-center gap-2 rounded-lg border border-zinc-700 px-4 py-3 text-sm transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-30"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-700 hover:bg-zinc-800 disabled:opacity-40"
+            title="Previous step"
           >
             <ArrowLeft size={16} />
-            Previous
           </button>
 
           <button
             onClick={togglePlayback}
-            className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-3 text-sm font-semibold transition hover:bg-green-500"
+            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold hover:bg-indigo-500"
           >
             {isPlaying ? (
               <>
-                <Pause size={16} />
-                Pause
+                <Pause size={15} /> Pause
               </>
             ) : (
               <>
-                <Play size={16} />
-                {isLast ? 'Replay' : 'Auto Play'}
+                <Play size={15} /> {isLast ? 'Replay' : 'Play trace'}
               </>
             )}
           </button>
 
           <button
             onClick={nextStep}
-            disabled={isLast || isPlaying}
-            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-3 text-sm font-semibold transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-30"
+            disabled={isLast}
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-700 hover:bg-zinc-800 disabled:opacity-40"
+            title="Next step"
           >
-            Next
             <ArrowRight size={16} />
           </button>
+
+          <button
+            onClick={resetHistory}
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-700 hover:bg-zinc-800"
+            title="Reset to beginning"
+          >
+            <RotateCcw size={16} />
+          </button>
+        </div>
+      </div>
+
+      {/* Progress */}
+      <div>
+        <div className="mb-2 flex justify-between text-xs text-zinc-400">
+          <span>
+            Step {currentIndex + 1} of {steps.length}
+          </span>
+          <span>{Math.round(progress)}% completed</span>
+        </div>
+
+        <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
+          <div
+            className="h-full bg-indigo-500 transition-all duration-300"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Step card */}
+      <div className="rounded-xl border border-zinc-800 bg-[#0e0e11] p-5">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <span className="rounded-md bg-indigo-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-indigo-400">
+            {currentStep.operation.replace(/_/g, ' ')}
+          </span>
+
+          <span className="text-xs text-zinc-500">
+            Step ID #{currentStep.step_number}
+          </span>
+        </div>
+
+        <p className="text-base font-medium text-zinc-200">
+          {currentStep.description}
+        </p>
+
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+
+          <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
+            <span className="text-xs text-zinc-500">
+              Current state
+            </span>
+            <p className="mt-1 font-mono text-sm text-zinc-300">
+              {formatState(currentStep.current_state)}
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
+            <span className="text-xs text-zinc-500">
+              Input symbol
+            </span>
+            <p className="mt-1 font-mono text-sm text-indigo-400">
+              {currentStep.symbol === 'eps'
+                ? 'ε'
+                : currentStep.symbol || '—'}
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
+            <span className="text-xs text-zinc-500">
+              Move states
+            </span>
+            <p className="mt-1 font-mono text-sm text-zinc-300">
+              {formatState(currentStep.moved_states)}
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-3">
+            <span className="text-xs text-zinc-500">
+              Result state
+            </span>
+            <p className="mt-1 font-mono text-sm text-green-400">
+              {formatState(currentStep.next_state)}
+            </p>
+          </div>
 
         </div>
       </div>
 
-      <div>
-        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-          Jump to step
+      {/* Mini step list */}
+      <div className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500">
+          Trace Steps
         </p>
 
-        <div className="flex flex-wrap gap-2">
-          {steps.map((step, index) => (
-            <button
-              key={step.step_number}
-              onClick={() => {
-                setIsPlaying(false)
-                setCurrentIndex(index)
-              }}
-              title={step.operation}
-              className={`flex h-9 w-9 items-center justify-center rounded-lg border text-xs transition ${
-                currentIndex === index
-                  ? 'border-indigo-500 bg-indigo-600 text-white'
-                  : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-indigo-500'
-              }`}
-            >
-              {step.step_number}
-            </button>
-          ))}
+        <div className="max-h-48 space-y-1.5 overflow-y-auto pr-1">
+          {steps.map((step, index) => {
+            const isSelected = index === currentIndex
+
+            return (
+              <button
+                key={step.step_number}
+                onClick={() => {
+                  setIsPlaying(false)
+                  setCurrentIndex(index)
+                }}
+                className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs transition ${
+                  isSelected
+                    ? 'border border-indigo-500/50 bg-indigo-500/15 text-indigo-200'
+                    : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-zinc-500">
+                    #{step.step_number}
+                  </span>
+                  <span>{step.description}</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-zinc-400">
+                    {formatState(step.next_state)}
+                  </span>
+                  {isSelected && (
+                    <CheckCircle2
+                      size={14}
+                      className="text-indigo-400"
+                    />
+                  )}
+                </div>
+              </button>
+            )
+          })}
         </div>
       </div>
 
     </section>
-  )
-}
-
-function DetailCard({
-  label,
-  value,
-}: {
-  label: string
-  value: string
-}) {
-  return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4">
-      <p className="mb-2 text-xs text-zinc-500">
-        {label}
-      </p>
-
-      <p className="break-words text-sm font-semibold text-zinc-200">
-        {value}
-      </p>
-    </div>
   )
 }

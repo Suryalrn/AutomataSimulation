@@ -100,6 +100,10 @@ function createLayout(
   transitions: GraphTransition[],
   highlightedStateIds: string[],
 ) {
+  if (states.length === 0) {
+    return { nodes: [], edges: [] }
+  }
+
   const graph = new dagre.graphlib.Graph()
 
   graph.setDefaultEdgeLabel(() => ({}))
@@ -133,7 +137,7 @@ function createLayout(
   const highlighted = new Set(highlightedStateIds)
 
   const nodes: Node[] = states.map((state) => {
-    const position = graph.node(state.id)
+    const position = graph.node(state.id) ?? { x: 0, y: 0 }
 
     return {
       id: state.id,
@@ -149,58 +153,60 @@ function createLayout(
     }
   })
 
-  const edgeCounts = new Map<string, number>()
+  // Group transitions between the same states into a single clean edge with combined labels (e.g. "a, b")
+  const groupedTransitions = new Map<string, { from: string; to: string; labels: string[] }>()
 
-  const edges: Edge[] = transitions.map((transition, index) => {
+  transitions.forEach((transition) => {
+    if (!graph.hasNode(transition.from) || !graph.hasNode(transition.to)) {
+      return
+    }
+
     const pair = `${transition.from}->${transition.to}`
-    const occurrence = edgeCounts.get(pair) ?? 0
+    const existing = groupedTransitions.get(pair)
+    if (existing) {
+      if (!existing.labels.includes(transition.label)) {
+        existing.labels.push(transition.label)
+      }
+    } else {
+      groupedTransitions.set(pair, {
+        from: transition.from,
+        to: transition.to,
+        labels: [transition.label],
+      })
+    }
+  })
 
-    edgeCounts.set(pair, occurrence + 1)
-
-    const isSelfLoop = transition.from === transition.to
-    const useAlternateHandles = occurrence % 2 === 1
+  const edges: Edge[] = Array.from(groupedTransitions.values()).map((group, index) => {
+    const isSelfLoop = group.from === group.to
 
     return {
-      id: `edge-${index}`,
-      source: transition.from,
-      target: transition.to,
-
-      sourceHandle: isSelfLoop
-        ? 'source-bottom'
-        : useAlternateHandles
-          ? 'source-bottom'
-          : 'source-right',
-
-      targetHandle: isSelfLoop
-        ? 'target-top'
-        : useAlternateHandles
-          ? 'target-top'
-          : 'target-left',
-
-      label: transition.label,
-      type: 'smoothstep',
+      id: `edge-${index}-${group.from}-${group.to}`,
+      source: group.from,
+      target: group.to,
+      sourceHandle: isSelfLoop ? 'source-bottom' : 'source-right',
+      targetHandle: isSelfLoop ? 'target-top' : 'target-left',
+      label: group.labels.join(', '),
+      type: isSelfLoop ? 'smoothstep' : 'bezier',
       animated: false,
-
       markerEnd: {
         type: MarkerType.ArrowClosed,
         color: '#818cf8',
       },
-
       style: {
         stroke: '#818cf8',
         strokeWidth: 2,
       },
-
       labelStyle: {
         fill: '#c7d2fe',
         fontWeight: 600,
         fontSize: 13,
       },
-
       labelBgStyle: {
         fill: '#18181b',
         fillOpacity: 0.95,
       },
+      labelBgPadding: [4, 4] as [number, number],
+      labelBgBorderRadius: 4,
     }
   })
 

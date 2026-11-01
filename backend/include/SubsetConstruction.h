@@ -20,6 +20,9 @@ struct ConversionResult {
     ValidationResult validation;
 };
 
+// Maximum number of DFA states allowed to protect against memory exhaustion (state explosion).
+constexpr size_t MAX_DFA_STATES = 500;
+
 inline ConversionResult convertToDFAWithHistory(const NFA& nfa) {
 
     ConversionResult result;
@@ -96,6 +99,13 @@ inline ConversionResult convertToDFAWithHistory(const NFA& nfa) {
             bool isNew = dfa.states.find(nextState) == dfa.states.end();
 
             if (isNew) {
+                if (dfa.states.size() >= MAX_DFA_STATES) {
+                    result.validation.addError(
+                        "DFA state limit reached: subset construction exceeded " +
+                        to_string(MAX_DFA_STATES) + " states (state explosion protection)."
+                    );
+                    return result;
+                }
                 dfa.states.insert(nextState);
                 pending.push(nextState);
             }

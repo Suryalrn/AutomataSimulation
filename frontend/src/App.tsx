@@ -20,36 +20,8 @@ function App() {
 
   const [page, setPage] = useState<Page>('dashboard')
 
-  if (page === 'nfa') {
+  if (page !== 'dashboard') {
     return <NFAEditor onBack={() => setPage('dashboard')} />
-  }
-
-  if (page === 'dfa' || page === 'simulator') {
-    return (
-      <div className="min-h-screen bg-[#09090b] p-8 text-white">
-        <button
-          onClick={() => setPage('dashboard')}
-          className="mb-6 rounded-lg border border-zinc-700 px-4 py-2"
-        >
-          ← Back to Dashboard
-        </button>
-
-        <h1 className="text-2xl font-bold">
-          {page === 'dfa' ? 'DFA Visualizer' : 'String Simulator'}
-        </h1>
-
-        <p className="mt-3 text-zinc-400">
-          Open the NFA Editor and convert an automaton to use these features.
-        </p>
-
-        <button
-          onClick={() => setPage('nfa')}
-          className="mt-5 rounded-lg bg-indigo-600 px-5 py-3"
-        >
-          Open NFA Editor
-        </button>
-      </div>
-    )
   }
   return (
     <div className="min-h-screen bg-[#09090b] text-zinc-100">

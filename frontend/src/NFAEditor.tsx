@@ -8,9 +8,9 @@ import {
   Trash2,
   Play,
   Loader2,
-  Network,
   CheckCircle2,
   AlertCircle,
+  Download,
 } from 'lucide-react'
 import ConversionHistory, {
   type ConversionStep,
@@ -41,7 +41,7 @@ type ConversionResponse = {
   history: ConversionStep[]
 }
 
-const API_URL = import.meta.env.VITE_API_URL
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:18080'
 
 function getDFAStateId(state: number[]) {
   return `D${state.join('_') || 'empty'}`
@@ -82,28 +82,69 @@ export default function NFAEditor({
       .includes(String(state)),
   }))
 
-  const nfaGraphTransitions = transitions.map((transition) => ({
-    from: `q${transition.from}`,
-    to: `q${transition.to}`,
-    label: transition.symbol === 'eps' ? 'ε' : transition.symbol,
-  }))
+  const nfaGraphTransitions = transitions
+    .filter((t) => states.includes(t.from) && states.includes(t.to))
+    .map((transition) => ({
+      from: `q${transition.from}`,
+      to: `q${transition.to}`,
+      label:
+        transition.symbol === 'eps' || transition.symbol === 'epsilon'
+          ? 'ε'
+          : transition.symbol,
+    }))
 
   const handleHistoryStepChange = useCallback(
     (step: ConversionStep) => {
-      const nextHighlightedIds = [
-        getDFAStateId(step.current_state),
-        getDFAStateId(step.next_state),
-      ].filter((id, index, ids) => ids.indexOf(id) === index)
+      let nextHighlightedIds: string[] = []
 
-      setHighlightedDFAStateIds((previousIds) =>
-        previousIds.length === nextHighlightedIds.length &&
-        previousIds.every((id, index) => id === nextHighlightedIds[index])
-          ? previousIds
-          : nextHighlightedIds,
-      )
+      if (step.operation === 'FINAL_STATES') {
+        if (result?.dfa?.final_states) {
+          nextHighlightedIds = result.dfa.final_states.map((s) => getDFAStateId(s))
+        }
+      } else if (step.operation === 'INITIAL_CLOSURE') {
+        nextHighlightedIds = [getDFAStateId(step.next_state)]
+      } else if (step.operation === 'MOVE') {
+        nextHighlightedIds = [getDFAStateId(step.current_state)]
+      } else {
+        nextHighlightedIds = [
+          getDFAStateId(step.current_state),
+          getDFAStateId(step.next_state),
+        ].filter((id) => id !== 'Dempty' || step.next_state.length === 0)
+      }
+
+      setHighlightedDFAStateIds(nextHighlightedIds)
     },
-    [],
+    [result],
   )
+
+  function handleStateCountChange(rawCount: number) {
+    if (isNaN(rawCount) || rawCount < 1) {
+      setStateCount(1)
+      return
+    }
+
+    const validCount = Math.min(50, Math.max(1, Math.floor(rawCount)))
+    setStateCount(validCount)
+    setResult(null)
+
+    if (startState >= validCount) {
+      setStartState(0)
+    }
+
+    const cleanedFinalStates = finalStates
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => {
+        const num = Number(s)
+        return Number.isInteger(num) && num >= 0 && num < validCount
+      })
+      .join(', ')
+    setFinalStates(cleanedFinalStates)
+
+    setTransitions((prev) =>
+      prev.filter((t) => t.from < validCount && t.to < validCount),
+    )
+  }
 
   function resetEditor() {
     setStateCount(3)
@@ -179,7 +220,7 @@ export default function NFAEditor({
     setResult(null)
     setHighlightedDFAStateIds([])
 
-    const alphabetSymbols = [...new Set(alphabet.replace(/\s/g, '').split(''))]
+    const alphabetSymbols = [...new Set(alphabet.replace(/\s/g, '').split(''))].filter(Boolean)
 
     const finalStateIds = finalStates
       .split(',')
@@ -190,9 +231,9 @@ export default function NFAEditor({
     if (
       !Number.isInteger(stateCount) ||
       stateCount < 1 ||
-      stateCount > 1000
+      stateCount > 50
     ) {
-      setError('State count must be between 1 and 1000.')
+      setError('State count must be between 1 and 50.')
       return
     }
 
@@ -211,16 +252,17 @@ export default function NFAEditor({
           !Number.isInteger(state) || !states.includes(state),
       )
     ) {
-      setError('Enter valid final state IDs separated by commas.')
+      setError('Enter valid final state IDs separated by commas (e.g. 1, 2).')
       return
     }
 
     if (
+      alphabetSymbols.length === 0 ||
       alphabetSymbols.some(
-        (symbol) => symbol.length !== 1 || symbol === '\0',
+        (symbol) => symbol.length !== 1 || symbol === '\0' || symbol === 'ε',
       )
     ) {
-      setError('Use single-character alphabet symbols.')
+      setError('Alphabet must contain single-character symbols (excluding ε).')
       return
     }
 
@@ -232,10 +274,11 @@ export default function NFAEditor({
           !transition.symbol ||
           (transition.symbol !== 'eps' &&
             transition.symbol !== 'epsilon' &&
+            transition.symbol !== 'ε' &&
             transition.symbol.length !== 1),
       )
     ) {
-      setError('Check your transition states and symbols.')
+      setError('Check your transition states and symbols (use single characters or eps / ε).')
       return
     }
 
@@ -247,7 +290,10 @@ export default function NFAEditor({
       transitions: transitions.map((transition) => ({
         from: transition.from,
         to: transition.to,
-        symbol: transition.symbol,
+        symbol:
+          transition.symbol === 'ε' || transition.symbol === 'epsilon'
+            ? 'eps'
+            : transition.symbol,
       })),
     }
 
@@ -267,7 +313,7 @@ export default function NFAEditor({
         setError(
           data?.errors?.join('\n') ||
           data?.error ||
-          'Cannot connect to the C++ API. Check that the backend server is running.',
+          'Cannot connect to the C++ API. Check that the backend server is running on port 18080.',
         )
       } else {
         setError('An unexpected error occurred.')
@@ -290,16 +336,16 @@ export default function NFAEditor({
           </button>
 
           <div>
-            <h1 className="font-semibold">NFA Editor</h1>
+            <h1 className="font-semibold">NFA Editor & Studio</h1>
             <p className="text-xs text-zinc-500">
-              Define your finite automaton
+              Define, convert, and inspect your finite automaton
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2 text-xs text-green-400">
           <span className="h-2 w-2 rounded-full bg-green-500" />
-          C++ API
+          C++ Engine
         </div>
       </header>
 
@@ -315,7 +361,7 @@ export default function NFAEditor({
           </h2>
 
           <p className="mt-2 text-sm text-zinc-400">
-            Configure states, alphabet, accepting states and transitions.
+            Configure states, alphabet symbols, accepting states and transitions.
           </p>
         </section>
 
@@ -324,25 +370,22 @@ export default function NFAEditor({
 
           <div>
             <label className="mb-2 block text-sm text-zinc-400">
-              Number of states
+              Number of states (1 - 50)
             </label>
 
             <input
               type="number"
               min={1}
-              max={1000}
+              max={50}
               value={stateCount}
-              onChange={(e) => {
-                setStateCount(Number(e.target.value))
-                setResult(null)
-              }}
+              onChange={(e) => handleStateCountChange(Number(e.target.value))}
               className="w-full rounded-lg border border-zinc-700 bg-zinc-900 p-3 outline-none focus:border-indigo-500"
             />
           </div>
 
           <div>
             <label className="mb-2 block text-sm text-zinc-400">
-              Alphabet
+              Alphabet (single characters, e.g. 01 or ab)
             </label>
 
             <input
@@ -356,7 +399,7 @@ export default function NFAEditor({
             />
 
             <p className="mt-1 text-xs text-zinc-500">
-              Enter single-character symbols without separators.
+              Enter alphabet symbols without separators. Epsilon is handled separately.
             </p>
           </div>
 
@@ -371,7 +414,7 @@ export default function NFAEditor({
                 setStartState(Number(e.target.value))
                 setResult(null)
               }}
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-900 p-3 outline-none"
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-900 p-3 outline-none focus:border-indigo-500"
             >
               {states.map((state) => (
                 <option key={state} value={state}>
@@ -383,7 +426,7 @@ export default function NFAEditor({
 
           <div>
             <label className="mb-2 block text-sm text-zinc-400">
-              Final states
+              Final / accepting states
             </label>
 
             <input
@@ -392,7 +435,7 @@ export default function NFAEditor({
                 setFinalStates(e.target.value)
                 setResult(null)
               }}
-              placeholder="Example: 1,2"
+              placeholder="Example: 1, 2"
               className="w-full rounded-lg border border-zinc-700 bg-zinc-900 p-3 outline-none focus:border-indigo-500"
             />
 
@@ -402,9 +445,9 @@ export default function NFAEditor({
           </div>
         </section>
 
-        {/* States */}
+        {/* States list */}
         <section className="rounded-xl border border-zinc-800 bg-[#111114] p-6">
-          <h3 className="mb-4 font-semibold">Available states</h3>
+          <h3 className="mb-4 font-semibold">Configured States</h3>
 
           <div className="flex flex-wrap gap-3">
             {states.map((state) => (
@@ -428,11 +471,12 @@ export default function NFAEditor({
           </div>
         </section>
 
+        {/* NFA Visualizer */}
         <section className="space-y-4 rounded-xl border border-zinc-800 bg-[#111114] p-6">
           <div>
-            <h3 className="font-semibold">NFA Visualization</h3>
+            <h3 className="font-semibold">NFA Graph Visualization</h3>
             <p className="mt-1 text-xs text-zinc-500">
-              Visual representation of your input automaton.
+              Visual diagram of your defined input automaton.
             </p>
           </div>
 
@@ -449,7 +493,7 @@ export default function NFAEditor({
             <div>
               <h3 className="font-semibold">Transitions</h3>
               <p className="mt-1 text-xs text-zinc-500">
-                Define how your automaton moves between states.
+                Define transitions between states (use symbol character or eps / ε).
               </p>
             </div>
 
@@ -480,7 +524,7 @@ export default function NFAEditor({
                   onChange={(e) =>
                     updateTransition(index, 'from', e.target.value)
                   }
-                  className="min-w-0 rounded-lg border border-zinc-700 bg-zinc-900 p-3 text-sm"
+                  className="min-w-0 rounded-lg border border-zinc-700 bg-zinc-900 p-3 text-sm focus:border-indigo-500"
                 >
                   {states.map((state) => (
                     <option key={state} value={state}>
@@ -494,8 +538,8 @@ export default function NFAEditor({
                   onChange={(e) =>
                     updateTransition(index, 'symbol', e.target.value)
                   }
-                  placeholder="a / eps"
-                  className="min-w-0 rounded-lg border border-zinc-700 bg-zinc-900 p-3 text-sm"
+                  placeholder="a / eps / ε"
+                  className="min-w-0 rounded-lg border border-zinc-700 bg-zinc-900 p-3 text-sm focus:border-indigo-500"
                 />
 
                 <select
@@ -503,7 +547,7 @@ export default function NFAEditor({
                   onChange={(e) =>
                     updateTransition(index, 'to', e.target.value)
                   }
-                  className="min-w-0 rounded-lg border border-zinc-700 bg-zinc-900 p-3 text-sm"
+                  className="min-w-0 rounded-lg border border-zinc-700 bg-zinc-900 p-3 text-sm focus:border-indigo-500"
                 >
                   {states.map((state) => (
                     <option key={state} value={state}>
@@ -524,14 +568,14 @@ export default function NFAEditor({
 
             {transitions.length === 0 && (
               <p className="py-5 text-center text-sm text-zinc-500">
-                No transitions added yet.
+                No transitions added yet. Click &quot;Add transition&quot; to begin.
               </p>
             )}
           </div>
         </section>
 
-        {/* Convert button */}
-        <div className="flex gap-3">
+        {/* Action buttons */}
+        <div className="flex flex-wrap gap-3">
           <button
             onClick={convertNFA}
             disabled={loading}
@@ -543,7 +587,7 @@ export default function NFAEditor({
               <Play size={19} />
             )}
 
-            {loading ? 'Converting...' : 'Convert ε-NFA to DFA'}
+            {loading ? 'Running Subset Construction...' : 'Convert ε-NFA to DFA'}
 
             {!loading && <ArrowRight size={18} />}
           </button>
@@ -560,98 +604,59 @@ export default function NFAEditor({
         {error && (
           <div className="flex gap-3 whitespace-pre-line rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
             <AlertCircle size={20} className="shrink-0" />
-            {error}
+            <div>
+              <p className="font-semibold">Conversion Error</p>
+              <p className="mt-1">{error}</p>
+            </div>
           </div>
         )}
 
-        {/* DFA result */}
+        {/* DFA Result */}
         {result && (
-          <section className="space-y-5 rounded-xl border border-green-500/30 bg-[#111114] p-6">
+          <section className="space-y-6 rounded-xl border border-green-500/30 bg-[#111114] p-6">
 
-            <div className="flex items-center gap-3">
-              <CheckCircle2 className="text-green-400" size={24} />
-
-              <div>
-                <h3 className="font-semibold text-green-400">
-                  Conversion successful
-                </h3>
-                <p className="text-xs text-zinc-500">
-                  Generated by your C++ subset construction engine.
-                </p>
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className="text-green-400" size={24} />
+                <div>
+                  <h3 className="font-semibold text-green-400">
+                    Conversion Successful
+                  </h3>
+                  <p className="text-xs text-zinc-500">
+                    Equivalence established via Subset Construction.
+                  </p>
+                </div>
               </div>
-            </div>
 
-            <button
-              onClick={exportDFA}
-              className="rounded-lg border border-zinc-700 px-4 py-2 text-sm hover:bg-zinc-800"
-            >
-              Export DFA JSON
-            </button>
+              <button
+                onClick={exportDFA}
+                className="flex items-center gap-2 rounded-lg border border-zinc-700 px-4 py-2 text-xs hover:bg-zinc-800"
+              >
+                <Download size={15} />
+                Export DFA JSON
+              </button>
+            </div>
 
             <div className="grid gap-4 sm:grid-cols-3">
               <ResultStat
-                label="DFA States"
+                label="DFA Total States"
                 value={result.dfa.states.length}
               />
-
+              <ResultStat
+                label="Accepting States"
+                value={result.dfa.final_states.length}
+              />
               <ResultStat
                 label="DFA Transitions"
                 value={result.dfa.transitions.length}
               />
-
-              <ResultStat
-                label="History Steps"
-                value={result.history.length}
-              />
-            </div>
-
-            <div>
-              <h4 className="mb-3 flex items-center gap-2 font-semibold">
-                <Network size={18} />
-                Generated DFA states
-              </h4>
-
-              <div className="flex flex-wrap gap-3">
-                {result.dfa.states.map((state, index) => {
-                  const isStart =
-                    JSON.stringify(state) ===
-                    JSON.stringify(result.dfa.start_state)
-
-                  const isFinal = result.dfa.final_states.some(
-                    (finalState) =>
-                      JSON.stringify(finalState) === JSON.stringify(state),
-                  )
-
-                  return (
-                    <div
-                      key={index}
-                      className={`rounded-lg border p-4 text-sm ${
-                        isFinal
-                          ? 'border-green-500/50 bg-green-500/10'
-                          : 'border-zinc-700 bg-zinc-900'
-                      }`}
-                    >
-                      <p className="font-semibold">
-                        {state.length === 0
-                          ? '∅'
-                          : `{${state.map((s) => `q${s}`).join(', ')}}`}
-                      </p>
-
-                      <p className="mt-2 text-xs text-zinc-400">
-                        {isStart ? 'INITIAL ' : ''}
-                        {isFinal ? 'ACCEPTING' : ''}
-                      </p>
-                    </div>
-                  )
-                })}
-              </div>
             </div>
 
             <div className="space-y-3">
               <div>
                 <h4 className="font-semibold">Generated DFA Graph</h4>
                 <p className="mt-1 text-xs text-zinc-500">
-                  Complete DFA with accepting and dead states.
+                  Complete DFA with start, accepting, and dead states.
                 </p>
               </div>
 
@@ -679,34 +684,34 @@ export default function NFAEditor({
             </div>
 
             <div>
-              <h4 className="mb-3 font-semibold">DFA transition table</h4>
+              <h4 className="mb-3 font-semibold">DFA Transition Table</h4>
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead className="text-zinc-500">
                     <tr>
-                      <th className="border-b border-zinc-800 p-3">From</th>
-                      <th className="border-b border-zinc-800 p-3">Symbol</th>
-                      <th className="border-b border-zinc-800 p-3">To</th>
+                      <th className="border-b border-zinc-800 p-3">From State</th>
+                      <th className="border-b border-zinc-800 p-3">Input Symbol</th>
+                      <th className="border-b border-zinc-800 p-3">To State</th>
                     </tr>
                   </thead>
 
                   <tbody>
                     {result.dfa.transitions.map((transition, index) => (
                       <tr key={index}>
-                        <td className="border-b border-zinc-800 p-3">
+                        <td className="border-b border-zinc-800 p-3 font-mono">
                           {transition.from.length
-                            ? `{${transition.from.join(',')}}`
+                            ? `{${transition.from.map((s) => `q${s}`).join(',')}}`
                             : '∅'}
                         </td>
 
-                        <td className="border-b border-zinc-800 p-3 text-indigo-400">
+                        <td className="border-b border-zinc-800 p-3 font-mono text-indigo-400">
                           {transition.symbol}
                         </td>
 
-                        <td className="border-b border-zinc-800 p-3">
+                        <td className="border-b border-zinc-800 p-3 font-mono">
                           {transition.to.length
-                            ? `{${transition.to.join(',')}}`
+                            ? `{${transition.to.map((s) => `q${s}`).join(',')}}`
                             : '∅'}
                         </td>
                       </tr>
@@ -729,7 +734,11 @@ export default function NFAEditor({
                 .split(',')
                 .map((value) => Number(value.trim()))
                 .filter(Number.isInteger)}
-              transitions={transitions}
+              transitions={transitions.map((t) => ({
+                from: t.from,
+                to: t.to,
+                symbol: t.symbol === 'ε' || t.symbol === 'epsilon' ? 'eps' : t.symbol,
+              }))}
             />
 
           </section>

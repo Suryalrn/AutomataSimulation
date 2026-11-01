@@ -86,9 +86,15 @@ NFA jsonToNFA(const json& data) {
 
         string value = symbol.get<string>();
 
+        if (value == "eps" || value == "epsilon" || value == "ε" || value == "\xce\xbb") {
+            throw runtime_error(
+                "Epsilon ('eps' or 'ε') must not be included in the input alphabet."
+            );
+        }
+
         if (value.size() != 1 || value[0] == EPSILON) {
             throw runtime_error(
-                "Each alphabet symbol must be one character."
+                "Each alphabet symbol must be a single non-empty character."
             );
         }
 
@@ -136,7 +142,8 @@ NFA jsonToNFA(const json& data) {
 
         char symbol;
 
-        if (symbolText == "eps" || symbolText == "epsilon") {
+        if (symbolText == "eps" || symbolText == "epsilon" ||
+            symbolText == "ε" || symbolText == "\xce\xbb") {
             symbol = EPSILON;
         }
         else if (symbolText.size() == 1) {
@@ -144,7 +151,7 @@ NFA jsonToNFA(const json& data) {
         }
         else {
             throw runtime_error(
-                "Transition symbol must be one character or eps."
+                "Transition symbol must be one character or eps / ε."
             );
         }
 
@@ -236,8 +243,9 @@ int main() {
 
     crow::SimpleApp app;
 
-    // Health check endpoint.
+    // Health check endpoint with GET and OPTIONS support.
     CROW_ROUTE(app, "/api/health")
+    .methods("GET"_method, "OPTIONS"_method)
     ([&]() {
 
         return makeJsonResponse(200, {
@@ -287,6 +295,12 @@ int main() {
             return makeJsonResponse(400, {
                 {"success", false},
                 {"error", error.what()}
+            });
+        }
+        catch (...) {
+            return makeJsonResponse(500, {
+                {"success", false},
+                {"error", "Internal server error occurred."}
             });
         }
     });
@@ -369,6 +383,12 @@ int main() {
             return makeJsonResponse(400, {
                 {"success", false},
                 {"error", error.what()}
+            });
+        }
+        catch (...) {
+            return makeJsonResponse(500, {
+                {"success", false},
+                {"error", "Internal server error occurred."}
             });
         }
     });
