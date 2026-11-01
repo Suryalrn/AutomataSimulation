@@ -1,0 +1,49 @@
+# Compiled binaries & executables
+*.exe
+*.out
+*.app
+*.dll
+*.so
+*.dylib
+
+# Compiled object files & libraries
+*.o
+*.obj
+*.a
+*.lib
+
+# CMake & build directories
+build/
+backend/build/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+.ninja_deps
+.ninja_log
+build.ninja
+
+# VS Code & IDEs
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+.idea/
+*.suo
+*.user
+
+# Frontend / Node
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+.npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
