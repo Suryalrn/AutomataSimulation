@@ -93,7 +93,7 @@ inline bool inputNFA(NFA& nfa) {
     cout << "\nEnter transitions in this format:\n";
     cout << "FROM SYMBOL TO\n";
     cout << "Example: 0 a 1\n";
-    cout << "For epsilon, enter: eps\n\n";
+    cout << "For epsilon, enter: eps or ε\n\n";
 
     for (int i = 0; i < transitionCount; i++) {
 
@@ -109,14 +109,15 @@ inline bool inputNFA(NFA& nfa) {
 
         char symbol;
 
-        if (symbolInput == "eps" || symbolInput == "epsilon") {
+        if (symbolInput == "eps" || symbolInput == "epsilon" ||
+            symbolInput == "ε" || symbolInput == "\xce\xbb") {
             symbol = EPSILON;
         }
         else if (symbolInput.size() == 1) {
             symbol = symbolInput[0];
         }
         else {
-            cout << "Enter a single character or eps.\n";
+            cout << "Enter a single character or eps / ε.\n";
             return false;
         }
 

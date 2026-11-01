@@ -198,6 +198,7 @@ function App() {
                 description="Learn epsilon closure, move operations and subset construction step by step."
                 tag="LEARNING"
                 button="Explore Algorithms"
+                onClick={() => setPage('nfa')}
               />
 
             </div>
