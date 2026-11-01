@@ -203,3 +203,4 @@ export const ARCHITECTURE_SLABS = [
     details: ['Depth-first ε-closure computation', 'Power-set state hashing', 'Deterministic string traversal'],
   },
 ]
+

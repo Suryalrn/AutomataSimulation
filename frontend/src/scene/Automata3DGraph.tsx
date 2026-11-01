@@ -190,6 +190,9 @@ export default function Automata3DGraph() {
                 ? THREE.MathUtils.lerp(1.0, 0.45, subsetMergeProgress)
                 : 1.0
 
+            const nfaLabelOpacity =
+              sceneIndex === 3 ? Math.max(0, 1 - subsetMergeProgress * 2) : 1.0
+
             return (
               <group
                 key={node.id}
@@ -200,13 +203,23 @@ export default function Automata3DGraph() {
                 <mesh>
                   <sphereGeometry args={[0.38, 32, 32]} />
                   <meshStandardMaterial
-                    color={node.isStart ? '#6AA7FF' : node.isAccept ? '#5CF2C0' : '#1C2430'}
-                    roughness={0.15}
-                    metalness={0.85}
-                    emissive={node.isStart ? '#6AA7FF' : node.isAccept ? '#5CF2C0' : '#0E1218'}
-                    emissiveIntensity={0.35}
+                    color={node.isStart ? '#6AA7FF' : node.isAccept ? '#5CF2C0' : '#2A3649'}
+                    roughness={0.18}
+                    metalness={0.8}
+                    emissive={node.isStart ? '#6AA7FF' : node.isAccept ? '#5CF2C0' : '#141E2C'}
+                    emissiveIntensity={0.4}
                     transparent
                     opacity={graphOpacity}
+                  />
+                </mesh>
+
+                {/* Precision Outer Rim */}
+                <mesh rotation={[Math.PI / 2, 0, 0]}>
+                  <torusGeometry args={[0.39, 0.012, 16, 48]} />
+                  <meshBasicMaterial
+                    color={node.isStart ? '#6AA7FF' : node.isAccept ? '#5CF2C0' : '#5A7292'}
+                    transparent
+                    opacity={0.75 * graphOpacity}
                   />
                 </mesh>
 
@@ -218,10 +231,14 @@ export default function Automata3DGraph() {
                   </mesh>
                 )}
 
-                {/* State Label in JetBrains Mono */}
+                {/* State Label in JetBrains Mono (Cross-fades smoothly in Scene 3) */}
                 <Html
                   center
                   distanceFactor={15}
+                  style={{
+                    opacity: nfaLabelOpacity,
+                    transition: 'opacity 0.15s ease-out',
+                  }}
                   className="pointer-events-none select-none font-mono text-xs font-semibold text-[#E8ECF2] drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
                 >
                   <span className="rounded bg-[#07090D]/85 px-1.5 py-0.5 border border-[#1C2430]">
@@ -266,9 +283,9 @@ export default function Automata3DGraph() {
                       geometry,
                       new THREE.LineBasicMaterial({
                         color: isEps ? '#FFB547' : '#6AA7FF',
-                        linewidth: isEps ? 2 : 1,
+                        linewidth: 1,
                         transparent: true,
-                        opacity: (isEps ? 0.85 : 0.45) * graphOpacity,
+                        opacity: (isEps ? 0.9 : 0.5) * graphOpacity,
                       }),
                     )
                   }
@@ -285,7 +302,7 @@ export default function Automata3DGraph() {
                   <span
                     className={`rounded px-1 py-0.2 ${
                       isEps
-                        ? 'bg-[#FFB547]/20 text-[#FFB547] border border-[#FFB547]/40'
+                        ? 'bg-[#FFB547]/20 text-[#FFB547] border border-[#FFB547]/40 shadow-[0_0_8px_rgba(255,181,71,0.3)]'
                         : 'bg-[#0E1218]/80 text-[#6AA7FF] border border-[#1C2430]'
                     }`}
                   >
@@ -304,6 +321,8 @@ export default function Automata3DGraph() {
           {SAMPLE_DFA.nodes.map((node) => {
             const dfaOpacity = sceneIndex === 3 ? subsetMergeProgress : 1.0
             const isTrap = node.id === 'D_trap'
+            const dfaLabelOpacity =
+              sceneIndex === 3 ? Math.max(0, (subsetMergeProgress - 0.4) * 2) : 1.0
 
             return (
               <group key={node.id} position={node.position}>
@@ -318,14 +337,32 @@ export default function Automata3DGraph() {
                           ? '#5CF2C0'
                           : node.isStart
                             ? '#6AA7FF'
-                            : '#273445'
+                            : '#2F3E52'
                     }
                     roughness={0.2}
                     metalness={0.8}
-                    emissive={isTrap ? '#FF5C7A' : node.isAccept ? '#5CF2C0' : '#1C2430'}
-                    emissiveIntensity={isTrap ? 0.15 : node.isAccept ? 0.45 : 0.25}
+                    emissive={isTrap ? '#FF5C7A' : node.isAccept ? '#5CF2C0' : '#1C2836'}
+                    emissiveIntensity={isTrap ? 0.2 : node.isAccept ? 0.45 : 0.3}
                     transparent
-                    opacity={dfaOpacity * (isTrap ? 0.45 : 1.0) * graphOpacity}
+                    opacity={dfaOpacity * (isTrap ? 0.5 : 1.0) * graphOpacity}
+                  />
+                </mesh>
+
+                {/* Outer Precision Rim */}
+                <mesh rotation={[Math.PI / 2, 0, 0]}>
+                  <torusGeometry args={[isTrap ? 0.33 : 0.47, 0.015, 16, 48]} />
+                  <meshBasicMaterial
+                    color={
+                      isTrap
+                        ? '#FF5C7A'
+                        : node.isAccept
+                          ? '#5CF2C0'
+                          : node.isStart
+                            ? '#6AA7FF'
+                            : '#6682A3'
+                    }
+                    transparent
+                    opacity={0.8 * dfaOpacity * graphOpacity}
                   />
                 </mesh>
 
@@ -341,10 +378,14 @@ export default function Automata3DGraph() {
                   </mesh>
                 )}
 
-                {/* Set-Label in JetBrains Mono */}
+                {/* Set-Label in JetBrains Mono (Cross-faded smoothly in Scene 3) */}
                 <Html
                   center
                   distanceFactor={15}
+                  style={{
+                    opacity: dfaLabelOpacity,
+                    transition: 'opacity 0.15s ease-out',
+                  }}
                   className="pointer-events-none select-none font-mono text-xs font-bold text-[#E8ECF2] drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]"
                 >
                   <span
@@ -396,7 +437,7 @@ export default function Automata3DGraph() {
                       geometry,
                       new THREE.LineBasicMaterial({
                         color: trans.to === 'D_trap' ? '#7C8696' : '#6AA7FF',
-                        linewidth: 1.5,
+                        linewidth: 1,
                         transparent: true,
                         opacity: edgeOpacity,
                       }),
@@ -419,14 +460,26 @@ export default function Automata3DGraph() {
         </group>
       )}
 
-      {/* 3. SCENE 1 PROBLEM: Two Ghost Tokens on state q2 branch */}
+      {/* 3. SCENE 1 PROBLEM: Two Glowing Ghost Tokens on state q2 branch */}
       <mesh ref={ghostToken1Ref} visible={false}>
-        <sphereGeometry args={[0.16, 16, 16]} />
-        <meshBasicMaterial color="#FFB547" />
+        <sphereGeometry args={[0.18, 20, 20]} />
+        <meshStandardMaterial
+          color="#FFB547"
+          emissive="#FFB547"
+          emissiveIntensity={1.8}
+          roughness={0.1}
+          metalness={0.8}
+        />
       </mesh>
       <mesh ref={ghostToken2Ref} visible={false}>
-        <sphereGeometry args={[0.16, 16, 16]} />
-        <meshBasicMaterial color="#FFB547" />
+        <sphereGeometry args={[0.18, 20, 20]} />
+        <meshStandardMaterial
+          color="#FFB547"
+          emissive="#FFB547"
+          emissiveIntensity={1.8}
+          roughness={0.1}
+          metalness={0.8}
+        />
       </mesh>
 
       {/* 4. SCENE 2 EPSILON-CLOSURE: Translucent Halo Shell around {q0, q1, q2} */}
@@ -449,7 +502,7 @@ export default function Automata3DGraph() {
         <meshStandardMaterial
           color="#5CF2C0"
           emissive="#5CF2C0"
-          emissiveIntensity={1.2}
+          emissiveIntensity={1.5}
           roughness={0.1}
           metalness={0.9}
         />

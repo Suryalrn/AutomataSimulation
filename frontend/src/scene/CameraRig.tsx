@@ -14,14 +14,14 @@ type Waypoint = {
 
 const SECTION_WAYPOINTS: Record<number, Waypoint> = {
   0: { pos: [0, 0.1, 11.2], target: [0, 0, 0] }, // Hero
-  1: { pos: [-0.6, -1.2, 5.4], target: [-1.4, -1.5, 0.4] }, // Problem: zoom on q2
-  2: { pos: [-2.2, 0.2, 7.6], target: [-2.2, 0.2, 0] }, // Epsilon-Closure: halo around {q0, q1, q2}
-  3: { pos: [0, 0, 9.8], target: [0, 0, 0] }, // Subset: merging nodes
-  4: { pos: [0.5, -0.3, 10.8], target: [0.2, -0.2, 0] }, // DFA: full complete graph
-  5: { pos: [0.6, -0.2, 8.8], target: [0.5, 0, 0] }, // Simulation: token traversal
-  6: { pos: [0, 0.8, 9.4], target: [0, 0, 0] }, // Architecture slabs
-  7: { pos: [0, 0, 12.0], target: [0, 0, 0] }, // Features grid
-  8: { pos: [0, 0.2, 11.4], target: [0, 0, 0] }, // CTA & footer
+  1: { pos: [1.2, -1.0, 5.8], target: [-1.4, -1.5, 0.4] }, // Problem: zoom focused on q2 with right-side offset
+  2: { pos: [0.8, 0.1, 7.8], target: [-1.8, 0.1, 0.1] }, // Epsilon-Closure: halo around {q0, q1, q2}
+  3: { pos: [0.5, 0.0, 9.6], target: [-0.4, 0.0, 0] }, // Subset: merging nodes
+  4: { pos: [-0.6, -0.2, 10.4], target: [0.2, -0.1, 0] }, // DFA: full complete graph
+  5: { pos: [-0.8, -0.2, 8.6], target: [0.6, 0, 0] }, // Simulation: token traversal
+  6: { pos: [-1.0, 0.8, 9.4], target: [0, 0, 0] }, // Architecture slabs
+  7: { pos: [0, 0, 11.8], target: [0, 0, 0] }, // Features grid
+  8: { pos: [0, 0.2, 11.2], target: [0, 0, 0] }, // CTA & footer
 }
 
 export default function CameraRig({ isReducedMotion }: CameraRigProps) {
@@ -30,53 +30,65 @@ export default function CameraRig({ isReducedMotion }: CameraRigProps) {
   const sceneProgress = useSceneStore((s) => s.sceneProgress)
   const mousePos = useSceneStore((s) => s.mousePos)
 
-  const currentPos = useRef(new THREE.Vector3(0, 0, 11))
+  const currentPos = useRef(new THREE.Vector3(0, 0, 11.2))
   const currentTarget = useRef(new THREE.Vector3(0, 0, 0))
   const idleAngle = useRef(0)
 
   useFrame((_, delta) => {
     // If user prefers reduced motion, set fixed camera without scrubbed pans/zooms
     if (isReducedMotion) {
-      camera.position.set(0, 0, 11)
+      camera.position.set(0, 0, 11.2)
       camera.lookAt(0, 0, 0)
       return
     }
 
-    // Determine current and next waypoint based on active scene index
     const fromWp = SECTION_WAYPOINTS[sceneIndex] ?? SECTION_WAYPOINTS[0]
     const nextIdx = Math.min(8, sceneIndex + 1)
     const toWp = SECTION_WAYPOINTS[nextIdx] ?? fromWp
 
-    // Smoothly interpolate waypoint positions with linear scroll scrub
+    // Cinematic "Inspection Plateau":
+    // The first 70% of each chapter stays stably framed on the subject.
+    // The last 30% glides smoothly into the next chapter's staging.
+    let transitionFactor = 0
+    if (sceneProgress > 0.7) {
+      const u = (sceneProgress - 0.7) / 0.3
+      transitionFactor = u * u * (3 - 2 * u) // smoothstep
+    }
+
     const targetPos = new THREE.Vector3(
-      THREE.MathUtils.lerp(fromWp.pos[0], toWp.pos[0], sceneProgress),
-      THREE.MathUtils.lerp(fromWp.pos[1], toWp.pos[1], sceneProgress),
-      THREE.MathUtils.lerp(fromWp.pos[2], toWp.pos[2], sceneProgress),
+      THREE.MathUtils.lerp(fromWp.pos[0], toWp.pos[0], transitionFactor),
+      THREE.MathUtils.lerp(fromWp.pos[1], toWp.pos[1], transitionFactor),
+      THREE.MathUtils.lerp(fromWp.pos[2], toWp.pos[2], transitionFactor),
     )
 
     const targetLookAt = new THREE.Vector3(
-      THREE.MathUtils.lerp(fromWp.target[0], toWp.target[0], sceneProgress),
-      THREE.MathUtils.lerp(fromWp.target[1], toWp.target[1], sceneProgress),
-      THREE.MathUtils.lerp(fromWp.target[2], toWp.target[2], sceneProgress),
+      THREE.MathUtils.lerp(fromWp.target[0], toWp.target[0], transitionFactor),
+      THREE.MathUtils.lerp(fromWp.target[1], toWp.target[1], transitionFactor),
+      THREE.MathUtils.lerp(fromWp.target[2], toWp.target[2], transitionFactor),
     )
 
     // Gentle idle orbit in Hero or CTA (< 0.05 rad/s budget)
     if (sceneIndex === 0 || sceneIndex === 8) {
-      idleAngle.current += delta * 0.035
-      const orbitRadiusX = Math.sin(idleAngle.current) * 0.4
-      const orbitRadiusY = Math.cos(idleAngle.current * 0.7) * 0.2
+      idleAngle.current += delta * 0.032
+      const orbitRadiusX = Math.sin(idleAngle.current) * 0.35
+      const orbitRadiusY = Math.cos(idleAngle.current * 0.7) * 0.18
       targetPos.x += orbitRadiusX
       targetPos.y += orbitRadiusY
     }
 
-    // Mouse parallax on camera (budget: max ±4° -> ~0.069 rad)
-    const parallaxX = mousePos[0] * 0.45
-    const parallaxY = -mousePos[1] * 0.35
+    // Subtle inspection breathing motion during inspection plateau
+    if (sceneIndex >= 1 && sceneIndex <= 6 && sceneProgress <= 0.7) {
+      targetPos.z += (sceneProgress - 0.35) * 0.25
+    }
+
+    // Mouse parallax on camera (max ±4° -> ~0.069 rad)
+    const parallaxX = mousePos[0] * 0.4
+    const parallaxY = -mousePos[1] * 0.3
     targetPos.x += parallaxX
     targetPos.y += parallaxY
 
     // Deterministic, smooth lerp
-    const lerpSpeed = 1 - Math.exp(-6.5 * delta)
+    const lerpSpeed = 1 - Math.exp(-7.0 * delta)
     currentPos.current.lerp(targetPos, lerpSpeed)
     currentTarget.current.lerp(targetLookAt, lerpSpeed)
 

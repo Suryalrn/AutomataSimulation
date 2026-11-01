@@ -20,6 +20,7 @@ add_executable(automata_simulator
 add_executable(automata_server
     src/server.cpp
 )
+set_target_properties(automata_server PROPERTIES OUTPUT_NAME "automata_api_server")
 
 if(WIN32)
     target_link_libraries(automata_server PRIVATE ws2_32 mswsock)

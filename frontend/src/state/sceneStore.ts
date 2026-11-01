@@ -86,3 +86,4 @@ export const useSceneStore = create<SceneState>((set) => ({
   setWebGLSupported: (val) => set({ isWebGLSupported: val }),
   setAppOpen: (open) => set({ isAppOpen: open }),
 }))
+

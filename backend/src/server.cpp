@@ -269,10 +269,14 @@ int main() {
         });
     });
 
-    // NFA to DFA conversion endpoint.
+    // NFA to DFA conversion endpoint with full CORS preflight support.
     CROW_ROUTE(app, "/api/convert")
-    .methods("POST"_method)
+    .methods("POST"_method, "OPTIONS"_method)
     ([&](const crow::request& request) {
+
+        if (request.method == "OPTIONS"_method) {
+            return makeOptionsResponse();
+        }
 
         try {
 
@@ -320,10 +324,14 @@ int main() {
         }
     });
 
-    // String simulation endpoint.
+    // String simulation endpoint with full CORS preflight support.
     CROW_ROUTE(app, "/api/simulate")
-    .methods("POST"_method)
+    .methods("POST"_method, "OPTIONS"_method)
     ([&](const crow::request& request) {
+
+        if (request.method == "OPTIONS"_method) {
+            return makeOptionsResponse();
+        }
 
         try {
 
@@ -408,18 +416,7 @@ int main() {
         }
     });
 
-    // Basic OPTIONS handlers for browser preflight requests.
-    CROW_ROUTE(app, "/api/convert")
-    .methods("OPTIONS"_method)
-    ([]() {
-        return makeOptionsResponse();
-    });
 
-    CROW_ROUTE(app, "/api/simulate")
-    .methods("OPTIONS"_method)
-    ([]() {
-        return makeOptionsResponse();
-    });
 
     cout << "====================================\n";
     cout << "     AUTOMATA SIMULATOR API\n";

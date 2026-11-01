@@ -28,10 +28,20 @@ function clamp(val: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, val))
 }
 
+const CHAPTERS = [
+  { id: 1, name: 'The Problem', tag: '01' },
+  { id: 2, name: 'ε-Closure', tag: '02' },
+  { id: 3, name: 'Subset Merge', tag: '03' },
+  { id: 4, name: 'Complete DFA', tag: '04' },
+  { id: 5, name: 'Simulation', tag: '05' },
+  { id: 6, name: 'Architecture', tag: '06' },
+]
+
 export default function StoryContainer({ onLaunchApp }: StoryContainerProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
   const lenisRef = useRef<Lenis | null>(null)
+  const currentSceneIndex = useSceneStore((s) => s.sceneIndex)
 
   // Panel refs for the 6 pinned scenes
   const p1Ref = useRef<HTMLDivElement>(null)
@@ -123,16 +133,10 @@ export default function StoryContainer({ onLaunchApp }: StoryContainerProps) {
       defaults: { ease: 'none' },
     })
 
-    // Setup 6 segments in master timeline (total duration = 6)
     // Segment 0: Problem (0 -> 1)
     masterTl.to(
       p1Ref.current,
-      {
-        opacity: 0,
-        y: -24,
-        pointerEvents: 'none',
-        duration: 0.2,
-      },
+      { opacity: 0, y: -24, pointerEvents: 'none', duration: 0.2 },
       0.8,
     )
 
@@ -209,6 +213,17 @@ export default function StoryContainer({ onLaunchApp }: StoryContainerProps) {
       pin: true,
       scrub: 0.8,
       animation: masterTl,
+      onLeaveBack: () => {
+        const store = useSceneStore.getState()
+        store.setActiveScene('hero', 0)
+        store.setSceneProgress(0)
+        store.setProblemSplitProgress(0)
+      },
+      onLeave: () => {
+        const store = useSceneStore.getState()
+        store.setActiveScene('features', 7)
+        store.setSceneProgress(0.5)
+      },
       onUpdate: (self) => {
         const totalProgress = self.progress // [0, 1]
         useSceneStore.getState().setGlobalProgress(totalProgress)
@@ -278,7 +293,6 @@ export default function StoryContainer({ onLaunchApp }: StoryContainerProps) {
       },
     })
 
-    // Refresh ScrollTrigger after DOM layout settle
     const refreshTimer = setTimeout(() => {
       ScrollTrigger.refresh()
     }, 250)
@@ -313,18 +327,65 @@ export default function StoryContainer({ onLaunchApp }: StoryContainerProps) {
     }
   }
 
+  const handleChapterClick = (chapterId: number) => {
+    if (stageRef.current && lenisRef.current) {
+      const stageRect = stageRef.current.getBoundingClientRect()
+      const scrollY = window.scrollY || window.pageYOffset
+      const stageTop = stageRect.top + scrollY
+      // Pinned stage covers 6 viewport heights
+      const chapterOffset = ((chapterId - 1) / 6) * (window.innerHeight * 6) + 10
+      lenisRef.current.scrollTo(stageTop + chapterOffset, { duration: 1.2 })
+    }
+  }
+
+  const isInsideStory = currentSceneIndex >= 1 && currentSceneIndex <= 6
+
   return (
     <div ref={containerRef} className="relative w-full text-[#E8ECF2] z-10 selection:bg-[#5CF2C0] selection:text-[#07090D]">
       {/* SECTION 0: HERO (100vh) */}
       <HeroSection onLaunchApp={handleLaunch} onExplore={handleExplore} />
 
+      {/* Floating Precision Chapter HUD (Visible when inside pinned story) */}
+      <aside
+        className={`fixed right-6 top-1/2 -translate-y-1/2 z-40 hidden md:flex flex-col items-end gap-3 transition-all duration-500 pointer-events-auto ${
+          isInsideStory ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8 pointer-events-none'
+        }`}
+        aria-label="Story chapters"
+      >
+        <div className="rounded-2xl border border-[#1C2430] bg-[#0E1218]/90 p-2.5 backdrop-blur-xl shadow-2xl space-y-1.5">
+          {CHAPTERS.map((ch) => {
+            const isActive = currentSceneIndex === ch.id
+            return (
+              <button
+                key={ch.id}
+                onClick={() => handleChapterClick(ch.id)}
+                className={`group flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-mono transition-all duration-200 cursor-pointer ${
+                  isActive
+                    ? 'bg-[#5CF2C0]/15 text-[#5CF2C0] font-bold border border-[#5CF2C0]/30 shadow-[0_0_12px_rgba(92,242,192,0.2)]'
+                    : 'text-[#7C8696] hover:text-[#E8ECF2] hover:bg-[#1C2430]/60 border border-transparent'
+                }`}
+                title={`Jump to ${ch.name}`}
+              >
+                <span className="text-[10px] tracking-widest">{ch.tag}</span>
+                <span className="text-[11px] font-sans font-medium">{ch.name}</span>
+                <span
+                  className={`h-1.5 w-1.5 rounded-full transition-transform duration-300 ${
+                    isActive ? 'bg-[#5CF2C0] scale-125' : 'bg-[#7C8696]/40 group-hover:bg-[#E8ECF2]'
+                  }`}
+                />
+              </button>
+            )
+          })}
+        </div>
+      </aside>
+
       {/* SECTIONS 1 - 6: PINNED STAGE (600vh scroll container) */}
       <div id="story-stage" ref={stageRef} className="relative h-screen w-full overflow-hidden">
-        {/* Panel 1: The Problem */}
+        {/* Panel 1: The Problem (Positioned on the RIGHT to leave q2 unobstructed on the left) */}
         <div
           id="panel-problem"
           ref={p1Ref}
-          className="absolute inset-0 flex items-center justify-start pointer-events-auto"
+          className="absolute inset-0 flex items-center justify-end pointer-events-auto"
         >
           <ProblemSection />
         </div>
@@ -338,20 +399,20 @@ export default function StoryContainer({ onLaunchApp }: StoryContainerProps) {
           <ClosureSection />
         </div>
 
-        {/* Panel 3: Subset Construction */}
+        {/* Panel 3: Subset Construction (Positioned on the RIGHT to leave merging clusters visible) */}
         <div
           id="panel-subset"
           ref={p3Ref}
-          className="absolute inset-0 flex items-center justify-start pointer-events-auto"
+          className="absolute inset-0 flex items-center justify-end pointer-events-auto"
         >
           <SubsetSection />
         </div>
 
-        {/* Panel 4: The Complete DFA */}
+        {/* Panel 4: The Complete DFA (Positioned on the LEFT so accepting & trap states on the right are clear) */}
         <div
           id="panel-dfa"
           ref={p4Ref}
-          className="absolute inset-0 flex items-center justify-end pointer-events-auto"
+          className="absolute inset-0 flex items-center justify-start pointer-events-auto"
         >
           <DfaSection />
         </div>
