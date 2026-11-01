@@ -229,13 +229,28 @@ crow::response makeJsonResponse(int status, const json& body) {
     response.set_header("Access-Control-Allow-Origin", "*");
     response.set_header(
         "Access-Control-Allow-Methods",
-        "GET, POST, OPTIONS"
+        "GET, POST, OPTIONS, PUT, DELETE"
     );
     response.set_header(
         "Access-Control-Allow-Headers",
-        "Content-Type"
+        "*"
     );
 
+    return response;
+}
+
+// Clean preflight OPTIONS response (200 OK with no body and full CORS headers)
+crow::response makeOptionsResponse() {
+    crow::response response(200);
+    response.set_header("Access-Control-Allow-Origin", "*");
+    response.set_header(
+        "Access-Control-Allow-Methods",
+        "GET, POST, OPTIONS, PUT, DELETE"
+    );
+    response.set_header(
+        "Access-Control-Allow-Headers",
+        "*"
+    );
     return response;
 }
 
@@ -397,13 +412,13 @@ int main() {
     CROW_ROUTE(app, "/api/convert")
     .methods("OPTIONS"_method)
     ([]() {
-        return makeJsonResponse(204, json::object());
+        return makeOptionsResponse();
     });
 
     CROW_ROUTE(app, "/api/simulate")
     .methods("OPTIONS"_method)
     ([]() {
-        return makeJsonResponse(204, json::object());
+        return makeOptionsResponse();
     });
 
     cout << "====================================\n";
@@ -413,7 +428,7 @@ int main() {
     cout << "Health: http://localhost:18080/api/health\n";
     cout << "====================================\n";
 
-    app.bindaddr("127.0.0.1")
+    app.bindaddr("0.0.0.0")
        .port(18080)
        .multithreaded()
        .run();

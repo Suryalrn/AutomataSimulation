@@ -41,7 +41,7 @@ type ConversionResponse = {
   history: ConversionStep[]
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:18080'
+const API_URL = import.meta.env.VITE_API_URL || ''
 
 function getDFAStateId(state: number[]) {
   return `D${state.join('_') || 'empty'}`

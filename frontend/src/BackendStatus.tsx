@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:18080'
+const API_URL = import.meta.env.VITE_API_URL || ''
 
 export default function BackendStatus() {
   const [status, setStatus] = useState<'checking' | 'online' | 'offline'>(
