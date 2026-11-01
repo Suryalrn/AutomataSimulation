@@ -13,14 +13,14 @@ import {
   type Edge,
 } from '@xyflow/react'
 
-type GraphState = {
+export type GraphState = {
   id: string
   label: string
   isStart: boolean
   isFinal: boolean
 }
 
-type GraphTransition = {
+export type GraphTransition = {
   from: string
   to: string
   label: string
@@ -40,51 +40,41 @@ function AutomataNode({
 }: {
   data: GraphState & { highlighted?: boolean }
 }) {
+  const isTrap = data.label === '∅' || data.id === 'Dempty'
+
   return (
     <>
-      <Handle
-        id="target-left"
-        type="target"
-        position={Position.Left}
-      />
-
-      <Handle
-        id="source-right"
-        type="source"
-        position={Position.Right}
-      />
-
-      <Handle
-        id="target-top"
-        type="target"
-        position={Position.Top}
-      />
-
-      <Handle
-        id="source-bottom"
-        type="source"
-        position={Position.Bottom}
-      />
+      <Handle id="target-left" type="target" position={Position.Left} className="!opacity-0" />
+      <Handle id="source-right" type="source" position={Position.Right} className="!opacity-0" />
+      <Handle id="target-top" type="target" position={Position.Top} className="!opacity-0" />
+      <Handle id="source-bottom" type="source" position={Position.Bottom} className="!opacity-0" />
 
       <div
-        className={`relative flex h-20 min-w-20 items-center justify-center rounded-full border-2 px-4 text-sm font-semibold transition-all duration-300 ${
+        className={`relative flex h-20 min-w-20 items-center justify-center rounded-full border-2 px-4 font-mono text-xs font-bold transition-all duration-300 shadow-lg ${
           data.highlighted
-            ? 'scale-110 border-yellow-300 bg-yellow-400/20 text-yellow-200 shadow-[0_0_25px_rgba(250,204,21,0.35)]'
-            : data.isFinal
-              ? 'border-green-400 bg-green-500/15 text-green-300'
-              : 'border-indigo-400 bg-indigo-500/15 text-indigo-200'
+            ? 'scale-110 border-[#FFB547] bg-[#FFB547]/20 text-[#FFB547] shadow-[0_0_28px_rgba(255,181,71,0.5)] ring-2 ring-[#FFB547]/50'
+            : isTrap
+              ? 'border-[#FF5C7A]/60 bg-[#0E1218] text-[#FF5C7A]'
+              : data.isFinal
+                ? 'border-[#5CF2C0] bg-[#0E1218] text-[#5CF2C0] shadow-[0_0_15px_rgba(92,242,192,0.2)]'
+                : data.isStart
+                  ? 'border-[#6AA7FF] bg-[#0E1218] text-[#6AA7FF]'
+                  : 'border-[#1C2430] bg-[#0E1218] text-[#E8ECF2] hover:border-[#6AA7FF]/60'
         }`}
       >
+        {/* Start State Indicator Pill */}
         {data.isStart && (
-          <span className="absolute -top-6 whitespace-nowrap text-[10px] text-indigo-300">
-            START
+          <span className="absolute -top-6 whitespace-nowrap rounded bg-[#6AA7FF]/15 px-1.5 py-0.5 text-[9px] font-bold text-[#6AA7FF] border border-[#6AA7FF]/30 tracking-wider">
+            ► START
           </span>
         )}
 
-        {data.label}
+        {/* State Label */}
+        <span className="truncate max-w-[85px] text-center">{data.label}</span>
 
+        {/* Double Concentric Ring for Final / Accepting States */}
         {data.isFinal && (
-          <span className="pointer-events-none absolute inset-1 rounded-full border border-green-400" />
+          <span className="pointer-events-none absolute inset-1 rounded-full border border-[#5CF2C0]/70" />
         )}
       </div>
     </>
@@ -105,13 +95,11 @@ function createLayout(
   }
 
   const graph = new dagre.graphlib.Graph()
-
   graph.setDefaultEdgeLabel(() => ({}))
-
   graph.setGraph({
     rankdir: 'LR',
     nodesep: 90,
-    ranksep: 130,
+    ranksep: 140,
     marginx: 40,
     marginy: 40,
   })
@@ -124,10 +112,7 @@ function createLayout(
   })
 
   transitions.forEach((transition) => {
-    if (
-      graph.hasNode(transition.from) &&
-      graph.hasNode(transition.to)
-    ) {
+    if (graph.hasNode(transition.from) && graph.hasNode(transition.to)) {
       graph.setEdge(transition.from, transition.to)
     }
   })
@@ -153,7 +138,7 @@ function createLayout(
     }
   })
 
-  // Group transitions between the same states into a single clean edge with combined labels (e.g. "a, b")
+  // Group transitions between the same states into a single clean edge with combined labels
   const groupedTransitions = new Map<string, { from: string; to: string; labels: string[] }>()
 
   transitions.forEach((transition) => {
@@ -178,6 +163,12 @@ function createLayout(
 
   const edges: Edge[] = Array.from(groupedTransitions.values()).map((group, index) => {
     const isSelfLoop = group.from === group.to
+    const hasEps = group.labels.some(
+      (l) => l === 'ε' || l === 'eps' || l === 'epsilon' || l === 'λ',
+    )
+    const isTrapEdge = group.to === 'Dempty'
+
+    const strokeColor = hasEps ? '#FFB547' : isTrapEdge ? '#7C8696' : '#6AA7FF'
 
     return {
       id: `edge-${index}-${group.from}-${group.to}`,
@@ -187,25 +178,29 @@ function createLayout(
       targetHandle: isSelfLoop ? 'target-top' : 'target-left',
       label: group.labels.join(', '),
       type: isSelfLoop ? 'smoothstep' : 'bezier',
-      animated: false,
+      animated: hasEps,
       markerEnd: {
         type: MarkerType.ArrowClosed,
-        color: '#818cf8',
+        color: strokeColor,
       },
       style: {
-        stroke: '#818cf8',
-        strokeWidth: 2,
+        stroke: strokeColor,
+        strokeWidth: hasEps ? 2 : 1.5,
+        strokeDasharray: hasEps ? '4 3' : undefined,
       },
       labelStyle: {
-        fill: '#c7d2fe',
+        fill: hasEps ? '#FFB547' : '#E8ECF2',
         fontWeight: 600,
-        fontSize: 13,
+        fontFamily: 'JetBrains Mono',
+        fontSize: 12,
       },
       labelBgStyle: {
-        fill: '#18181b',
+        fill: '#07090D',
         fillOpacity: 0.95,
+        stroke: '#1C2430',
+        strokeWidth: 1,
       },
-      labelBgPadding: [4, 4] as [number, number],
+      labelBgPadding: [6, 3] as [number, number],
       labelBgBorderRadius: 4,
     }
   })
@@ -219,23 +214,18 @@ export default function AutomataGraph({
   highlightedStateIds = [],
 }: Props) {
   const { nodes, edges } = useMemo(
-    () =>
-      createLayout(
-        states,
-        transitions,
-        highlightedStateIds,
-      ),
+    () => createLayout(states, transitions, highlightedStateIds),
     [states, transitions, highlightedStateIds],
   )
 
   return (
-    <div className="h-[460px] w-full overflow-hidden rounded-xl border border-zinc-800 bg-[#09090b]">
+    <div className="h-[460px] w-full overflow-hidden rounded-xl border border-[#1C2430] bg-[#07090D] shadow-inner relative">
       <ReactFlow
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
         fitView
-        fitViewOptions={{ padding: 0.25 }}
+        fitViewOptions={{ padding: 0.28 }}
         minZoom={0.2}
         maxZoom={2}
         nodesDraggable={false}
@@ -243,18 +233,18 @@ export default function AutomataGraph({
         elementsSelectable
         proOptions={{ hideAttribution: true }}
       >
-        <Background color="#27272a" gap={24} />
-        <Controls />
+        <Background color="#1C2430" gap={24} size={1} />
+        <Controls
+          className="!bg-[#0E1218] !border-[#1C2430] !fill-[#E8ECF2] !rounded-lg overflow-hidden [&>button]:!bg-[#0E1218] [&>button]:!border-[#1C2430] [&>button]:!fill-[#E8ECF2] hover:[&>button]:!bg-[#1C2430]"
+        />
 
         <MiniMap
           nodeColor={(node) => {
             const state = node.data as GraphState
-
-            return state.isFinal
-              ? '#22c55e'
-              : '#818cf8'
+            return state.isFinal ? '#5CF2C0' : state.isStart ? '#6AA7FF' : '#7C8696'
           }}
-          maskColor="rgba(9,9,11,0.7)"
+          maskColor="rgba(7,9,13,0.85)"
+          className="!bg-[#0E1218] !border-[#1C2430] !rounded-lg overflow-hidden"
         />
       </ReactFlow>
     </div>
