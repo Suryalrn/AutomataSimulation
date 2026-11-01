@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import axios from 'axios'
 import AutomataGraph from './AutomataGraph'
 import {
@@ -12,6 +12,10 @@ import {
   CheckCircle2,
   AlertCircle,
 } from 'lucide-react'
+import ConversionHistory, {
+  type ConversionStep,
+} from './ConversionHistory'
+import StringSimulator from './StringSimulator'
 
 type Transition = {
   from: number
@@ -34,14 +38,14 @@ type DFAResult = {
 type ConversionResponse = {
   success: boolean
   dfa: DFAResult
-  history: {
-    step_number: number
-    operation: string
-    description: string
-  }[]
+  history: ConversionStep[]
 }
 
-const API_URL = 'http://localhost:18080'
+const API_URL = import.meta.env.VITE_API_URL
+
+function getDFAStateId(state: number[]) {
+  return `D${state.join('_') || 'empty'}`
+}
 
 export default function NFAEditor({
   onBack,
@@ -61,6 +65,7 @@ export default function NFAEditor({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState<ConversionResponse | null>(null)
+  const [highlightedDFAStateIds, setHighlightedDFAStateIds] = useState<string[]>([])
 
   const states = Array.from(
     { length: stateCount },
@@ -82,6 +87,55 @@ export default function NFAEditor({
     to: `q${transition.to}`,
     label: transition.symbol === 'eps' ? 'ε' : transition.symbol,
   }))
+
+  const handleHistoryStepChange = useCallback(
+    (step: ConversionStep) => {
+      const nextHighlightedIds = [
+        getDFAStateId(step.current_state),
+        getDFAStateId(step.next_state),
+      ].filter((id, index, ids) => ids.indexOf(id) === index)
+
+      setHighlightedDFAStateIds((previousIds) =>
+        previousIds.length === nextHighlightedIds.length &&
+        previousIds.every((id, index) => id === nextHighlightedIds[index])
+          ? previousIds
+          : nextHighlightedIds,
+      )
+    },
+    [],
+  )
+
+  function resetEditor() {
+    setStateCount(3)
+    setAlphabet('ab')
+    setStartState(0)
+    setFinalStates('2')
+    setTransitions([
+      { from: 0, symbol: 'eps', to: 1 },
+      { from: 1, symbol: 'a', to: 2 },
+    ])
+    setResult(null)
+    setError('')
+    setHighlightedDFAStateIds([])
+  }
+
+  function exportDFA() {
+    if (!result) return
+
+    const blob = new Blob(
+      [JSON.stringify(result.dfa, null, 2)],
+      { type: 'application/json' },
+    )
+
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+
+    link.href = url
+    link.download = 'generated-dfa.json'
+    link.click()
+
+    URL.revokeObjectURL(url)
+  }
 
   function addTransition() {
     setTransitions((previous) => [
@@ -123,6 +177,7 @@ export default function NFAEditor({
   async function convertNFA() {
     setError('')
     setResult(null)
+    setHighlightedDFAStateIds([])
 
     const alphabetSymbols = [...new Set(alphabet.replace(/\s/g, '').split(''))]
 
@@ -476,21 +531,30 @@ export default function NFAEditor({
         </section>
 
         {/* Convert button */}
-        <button
-          onClick={convertNFA}
-          disabled={loading}
-          className="flex w-full items-center justify-center gap-3 rounded-xl bg-indigo-600 p-4 font-semibold transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {loading ? (
-            <Loader2 className="animate-spin" size={20} />
-          ) : (
-            <Play size={19} />
-          )}
+        <div className="flex gap-3">
+          <button
+            onClick={convertNFA}
+            disabled={loading}
+            className="flex flex-1 items-center justify-center gap-3 rounded-xl bg-indigo-600 p-4 font-semibold transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loading ? (
+              <Loader2 className="animate-spin" size={20} />
+            ) : (
+              <Play size={19} />
+            )}
 
-          {loading ? 'Converting...' : 'Convert ε-NFA to DFA'}
+            {loading ? 'Converting...' : 'Convert ε-NFA to DFA'}
 
-          {!loading && <ArrowRight size={18} />}
-        </button>
+            {!loading && <ArrowRight size={18} />}
+          </button>
+
+          <button
+            onClick={resetEditor}
+            className="rounded-lg border border-zinc-700 px-4 py-3 text-sm hover:bg-zinc-800"
+          >
+            Reset NFA
+          </button>
+        </div>
 
         {/* Errors */}
         {error && (
@@ -516,6 +580,13 @@ export default function NFAEditor({
                 </p>
               </div>
             </div>
+
+            <button
+              onClick={exportDFA}
+              className="rounded-lg border border-zinc-700 px-4 py-2 text-sm hover:bg-zinc-800"
+            >
+              Export DFA JSON
+            </button>
 
             <div className="grid gap-4 sm:grid-cols-3">
               <ResultStat
@@ -603,6 +674,7 @@ export default function NFAEditor({
                   to: `D${transition.to.join('_') || 'empty'}`,
                   label: transition.symbol,
                 }))}
+                highlightedStateIds={highlightedDFAStateIds}
               />
             </div>
 
@@ -644,31 +716,21 @@ export default function NFAEditor({
               </div>
             </div>
 
-            <div>
-              <h4 className="mb-3 font-semibold">Conversion history</h4>
+            <ConversionHistory
+              steps={result.history}
+              onStepChange={handleHistoryStepChange}
+            />
 
-              <div className="max-h-80 space-y-2 overflow-y-auto">
-                {result.history.map((step) => (
-                  <div
-                    key={step.step_number}
-                    className="flex gap-3 rounded-lg bg-zinc-900 p-3"
-                  >
-                    <span className="text-xs text-indigo-400">
-                      #{step.step_number}
-                    </span>
-
-                    <div>
-                      <p className="text-xs font-semibold">
-                        {step.operation}
-                      </p>
-                      <p className="mt-1 text-xs text-zinc-500">
-                        {step.description}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <StringSimulator
+              states={states}
+              alphabet={[...new Set(alphabet.replace(/\s/g, '').split(''))].filter(Boolean)}
+              startState={startState}
+              finalStates={finalStates
+                .split(',')
+                .map((value) => Number(value.trim()))
+                .filter(Number.isInteger)}
+              transitions={transitions}
+            />
 
           </section>
         )}

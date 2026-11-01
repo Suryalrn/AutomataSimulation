@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import NFAEditor from './NFAEditor'
+import BackendStatus from './BackendStatus'
 import {
   Activity,
   ArrowRight,
@@ -15,10 +16,40 @@ import {
 } from 'lucide-react'
 
 function App() {
-  const [page, setPage] = useState<'dashboard' | 'nfa'>('dashboard')
+  type Page = 'dashboard' | 'nfa' | 'dfa' | 'simulator'
+
+  const [page, setPage] = useState<Page>('dashboard')
 
   if (page === 'nfa') {
     return <NFAEditor onBack={() => setPage('dashboard')} />
+  }
+
+  if (page === 'dfa' || page === 'simulator') {
+    return (
+      <div className="min-h-screen bg-[#09090b] p-8 text-white">
+        <button
+          onClick={() => setPage('dashboard')}
+          className="mb-6 rounded-lg border border-zinc-700 px-4 py-2"
+        >
+          ← Back to Dashboard
+        </button>
+
+        <h1 className="text-2xl font-bold">
+          {page === 'dfa' ? 'DFA Visualizer' : 'String Simulator'}
+        </h1>
+
+        <p className="mt-3 text-zinc-400">
+          Open the NFA Editor and convert an automaton to use these features.
+        </p>
+
+        <button
+          onClick={() => setPage('nfa')}
+          className="mt-5 rounded-lg bg-indigo-600 px-5 py-3"
+        >
+          Open NFA Editor
+        </button>
+      </div>
+    )
   }
   return (
     <div className="min-h-screen bg-[#09090b] text-zinc-100">
@@ -42,10 +73,10 @@ function App() {
         </p>
 
         <nav className="space-y-2">
-          <SidebarItem icon={<LayoutDashboard size={18} />} label="Dashboard" active />
-          <SidebarItem icon={<Network size={18} />} label="NFA Editor" />
-          <SidebarItem icon={<Workflow size={18} />} label="DFA Visualizer" />
-          <SidebarItem icon={<Activity size={18} />} label="String Simulator" />
+          <SidebarItem icon={<LayoutDashboard size={18} />} label="Dashboard" active onClick={() => setPage('dashboard')} />
+          <SidebarItem icon={<Network size={18} />} label="NFA Editor" onClick={() => setPage('nfa')} />
+          <SidebarItem icon={<Workflow size={18} />} label="DFA Visualizer" onClick={() => setPage('dfa')} />
+          <SidebarItem icon={<Activity size={18} />} label="String Simulator" onClick={() => setPage('simulator')} />
         </nav>
 
         <p className="mb-4 mt-10 text-xs font-semibold uppercase tracking-widest text-zinc-500">
@@ -61,7 +92,7 @@ function App() {
         <div className="absolute bottom-6 left-6 right-6 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
           <div className="mb-2 flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-green-500" />
-            <span className="text-sm font-medium">Backend status</span>
+            <BackendStatus />
           </div>
           <p className="text-xs text-zinc-500">
             C++ Engine • Local development
@@ -177,6 +208,7 @@ function App() {
                 description="Explore subset construction and visualize the generated complete DFA."
                 tag="AUTOMATA CONVERSION"
                 button="Open DFA Visualizer"
+                onClick={() => setPage('dfa')}
               />
 
               <WorkspaceCard
@@ -185,6 +217,7 @@ function App() {
                 description="Enter strings and follow every state transition to determine acceptance."
                 tag="STRING TESTING"
                 button="Open Simulator"
+                onClick={() => setPage('simulator')}
               />
 
               <WorkspaceCard
@@ -232,13 +265,16 @@ function SidebarItem({
   icon,
   label,
   active = false,
+  onClick,
 }: {
   icon: React.ReactNode
   label: string
   active?: boolean
+  onClick?: () => void
 }) {
   return (
     <button
+      onClick={onClick}
       className={`flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm transition ${
         active
           ? 'bg-indigo-600/15 text-indigo-400'
