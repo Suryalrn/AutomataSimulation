@@ -1,346 +1,82 @@
-import { useState } from 'react'
+import { useEffect, lazy, Suspense } from 'react'
 import NFAEditor from './NFAEditor'
-import BackendStatus from './BackendStatus'
-import {
-  Activity,
-  ArrowRight,
-  BookOpen,
-  Code2,
-  FileCode2,
-  LayoutDashboard,
-  Network,
-  Play,
-  Settings,
-  Workflow,
-  Zap,
-} from 'lucide-react'
+import StoryContainer from './sections/StoryContainer'
+import WebGLFallback from './sections/WebGLFallback'
+import { useSceneStore } from './state/sceneStore'
 
-function App() {
-  type Page = 'dashboard' | 'nfa' | 'dfa' | 'simulator'
+// Code-split 3D canvas so text-first hero paints instantly
+const SceneCanvas = lazy(() => import('./scene/SceneCanvas'))
 
-  const [page, setPage] = useState<Page>('dashboard')
+export default function App() {
+  const isAppOpen = useSceneStore((s) => s.isAppOpen)
+  const setAppOpen = useSceneStore((s) => s.setAppOpen)
+  const isWebGLSupported = useSceneStore((s) => s.isWebGLSupported)
 
-  if (page !== 'dashboard') {
-    return <NFAEditor onBack={() => setPage('dashboard')} />
-  }
-  return (
-    <div className="min-h-screen bg-[#09090b] text-zinc-100">
+  // Listen to hash change, e.g. #editor, #app, #story
+  useEffect(() => {
+    const handleHash = () => {
+      if (window.location.hash === '#editor' || window.location.hash === '#app') {
+        setAppOpen(true)
+      } else if (window.location.hash === '#story' || window.location.hash === '') {
+        // stay in 3D story mode
+      }
+    }
+    handleHash()
+    window.addEventListener('hashchange', handleHash)
+    return () => window.removeEventListener('hashchange', handleHash)
+  }, [setAppOpen])
 
-      {/* Sidebar */}
-      <aside className="fixed left-0 top-0 hidden h-screen w-64 border-r border-zinc-800 bg-[#0e0e11] p-6 lg:block">
-
-        <div className="mb-12 flex items-center gap-3">
-          <div className="rounded-xl bg-indigo-600 p-2">
-            <Workflow size={23} />
+  if (isAppOpen) {
+    return (
+      <div className="relative min-h-screen bg-[#09090b] text-zinc-100">
+        <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-zinc-800 bg-[#0e0e11]/90 px-6 backdrop-blur-md">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                setAppOpen(false)
+                window.location.hash = ''
+              }}
+              className="flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-800/80 px-3 py-1.5 text-xs font-semibold text-zinc-200 transition hover:bg-zinc-700 hover:text-white cursor-pointer"
+            >
+              ← Back to 3D Story
+            </button>
+            <span className="text-zinc-600">|</span>
+            <span className="font-mono text-xs text-[#5CF2C0]">AutomataLab Studio</span>
           </div>
-
-          <div>
-            <h1 className="text-lg font-bold">AutomataLab</h1>
-            <p className="text-xs text-zinc-500">Finite State Machine Studio</p>
-          </div>
-        </div>
-
-        <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-zinc-500">
-          Workspace
-        </p>
-
-        <nav className="space-y-2">
-          <SidebarItem icon={<LayoutDashboard size={18} />} label="Dashboard" active onClick={() => setPage('dashboard')} />
-          <SidebarItem icon={<Network size={18} />} label="NFA Editor" onClick={() => setPage('nfa')} />
-          <SidebarItem icon={<Workflow size={18} />} label="DFA Visualizer" onClick={() => setPage('dfa')} />
-          <SidebarItem icon={<Activity size={18} />} label="String Simulator" onClick={() => setPage('simulator')} />
-        </nav>
-
-        <p className="mb-4 mt-10 text-xs font-semibold uppercase tracking-widest text-zinc-500">
-          Resources
-        </p>
-
-        <nav className="space-y-2">
-          <SidebarItem icon={<BookOpen size={18} />} label="Documentation" />
-          <SidebarItem icon={<Code2 size={18} />} label="Algorithm Explorer" />
-          <SidebarItem icon={<Settings size={18} />} label="Settings" />
-        </nav>
-
-        <div className="absolute bottom-6 left-6 right-6 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-          <div className="mb-2 flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-green-500" />
-            <BackendStatus />
-          </div>
-          <p className="text-xs text-zinc-500">
-            C++ Engine • Local development
-          </p>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="lg:ml-64">
-
-        {/* Header */}
-        <header className="flex h-20 items-center justify-between border-b border-zinc-800 px-6 lg:px-10">
-          <div>
-            <p className="text-sm text-zinc-500">Workspace / Overview</p>
-            <h2 className="text-xl font-semibold">Dashboard</h2>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <span className="hidden text-sm text-zinc-500 sm:block">
-              Automata Engine v1.0
-            </span>
-
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-600 font-semibold">
-              S
-            </div>
-          </div>
+          <span className="font-mono text-xs text-zinc-400">ε-NFA to DFA Engine</span>
         </header>
 
-        {/* Dashboard */}
-        <div className="space-y-8 p-6 lg:p-10">
-
-          {/* Welcome */}
-          <section>
-            <p className="mb-2 text-sm font-medium text-indigo-400">
-              FINITE AUTOMATA WORKSPACE
-            </p>
-
-            <h1 className="text-3xl font-bold tracking-tight lg:text-4xl">
-              Understand Automata.
-              <br />
-              <span className="text-zinc-500">
-                Visualize Every Transition.
-              </span>
-            </h1>
-
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-zinc-400">
-              Build epsilon-NFAs, convert them into complete DFAs,
-              explore subset construction and simulate input strings
-              through an interactive workspace.
-            </p>
-
-            <button onClick={() => setPage('nfa')} className="mt-6 flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-3 text-sm font-semibold transition hover:bg-indigo-500">
-              <Play size={16} />
-              Start Building
-              <ArrowRight size={16} />
-            </button>
-          </section>
-
-          {/* Stats */}
-          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard
-              icon={<Network size={20} />}
-              label="Automata Types"
-              value="02"
-              description="NFA and DFA"
-            />
-
-            <StatCard
-              icon={<Zap size={20} />}
-              label="Conversion Engine"
-              value="Ready"
-              description="C++ subset construction"
-            />
-
-            <StatCard
-              icon={<Activity size={20} />}
-              label="String Testing"
-              value="Ready"
-              description="Acceptance simulation"
-            />
-
-            <StatCard
-              icon={<FileCode2 size={20} />}
-              label="API Status"
-              value="Online"
-              description="Local REST API"
-            />
-          </section>
-
-          {/* Main Cards */}
-          <section>
-            <div className="mb-5">
-              <h2 className="text-xl font-semibold">Choose your workspace</h2>
-              <p className="mt-1 text-sm text-zinc-500">
-                Select a tool to start working with finite automata.
-              </p>
-            </div>
-
-            <div className="grid gap-5 md:grid-cols-2">
-
-              <WorkspaceCard
-                icon={<Network size={25} />}
-                title="NFA Editor"
-                description="Create an NFA, define states, add transitions and specify epsilon moves."
-                tag="INPUT AUTOMATON"
-                button="Open NFA Editor"
-                onClick={() => setPage('nfa')}
-              />
-
-              <WorkspaceCard
-                icon={<Workflow size={25} />}
-                title="DFA Visualizer"
-                description="Explore subset construction and visualize the generated complete DFA."
-                tag="AUTOMATA CONVERSION"
-                button="Open DFA Visualizer"
-                onClick={() => setPage('dfa')}
-              />
-
-              <WorkspaceCard
-                icon={<Activity size={25} />}
-                title="String Simulator"
-                description="Enter strings and follow every state transition to determine acceptance."
-                tag="STRING TESTING"
-                button="Open Simulator"
-                onClick={() => setPage('simulator')}
-              />
-
-              <WorkspaceCard
-                icon={<BookOpen size={25} />}
-                title="Algorithm Explorer"
-                description="Learn epsilon closure, move operations and subset construction step by step."
-                tag="LEARNING"
-                button="Explore Algorithms"
-                onClick={() => setPage('nfa')}
-              />
-
-            </div>
-          </section>
-
-          {/* Backend information */}
-          <section className="rounded-xl border border-zinc-800 bg-[#111114] p-6">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <h3 className="font-semibold">System Architecture</h3>
-                <p className="mt-1 text-sm text-zinc-500">
-                  Your application development stack
-                </p>
-              </div>
-
-              <Code2 size={22} className="text-zinc-500" />
-            </div>
-
-            <div className="mt-6 grid gap-4 sm:grid-cols-3">
-              <TechItem name="Frontend" value="React + TypeScript" />
-              <TechItem name="Backend" value="C++ + Crow" />
-              <TechItem name="Data Format" value="JSON REST API" />
-            </div>
-          </section>
-
-          <footer className="border-t border-zinc-800 pt-6 text-center text-xs text-zinc-600">
-            AutomataLab — Finite Automata Learning and Visualization Platform
-          </footer>
-
-        </div>
-      </main>
-    </div>
-  )
-}
-
-function SidebarItem({
-  icon,
-  label,
-  active = false,
-  onClick,
-}: {
-  icon: React.ReactNode
-  label: string
-  active?: boolean
-  onClick?: () => void
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm transition ${
-        active
-          ? 'bg-indigo-600/15 text-indigo-400'
-          : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
-      }`}
-    >
-      {icon}
-      {label}
-    </button>
-  )
-}
-
-function StatCard({
-  icon,
-  label,
-  value,
-  description,
-}: {
-  icon: React.ReactNode
-  label: string
-  value: string
-  description: string
-}) {
-  return (
-    <div className="rounded-xl border border-zinc-800 bg-[#111114] p-5">
-      <div className="mb-5 flex items-center justify-between">
-        <span className="text-sm text-zinc-400">{label}</span>
-        <span className="text-indigo-400">{icon}</span>
+        <NFAEditor
+          onBack={() => {
+            setAppOpen(false)
+            window.location.hash = ''
+          }}
+        />
       </div>
+    )
+  }
 
-      <h3 className="text-2xl font-bold">{value}</h3>
-      <p className="mt-1 text-xs text-zinc-500">{description}</p>
-    </div>
-  )
-}
-
-function WorkspaceCard({
-  icon,
-  title,
-  description,
-  tag,
-  button,
-  onClick,
-}: {
-  icon: React.ReactNode
-  title: string
-  description: string
-  tag: string
-  button: string
-  onClick?: () => void
-}) {
   return (
-    <div className="group rounded-xl border border-zinc-800 bg-[#111114] p-6 transition hover:border-indigo-500/60">
+    <div className="relative min-h-screen w-full bg-[#07090D] text-[#E8ECF2] overflow-x-hidden">
+      {/* 1. Persistent fixed 3D Canvas behind the DOM (lazy-loaded with fallback) */}
+      <Suspense fallback={null}>
+        <SceneCanvas />
+      </Suspense>
 
-      <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-400">
-        {icon}
-      </div>
+      {/* 2. Static SVG Fallback when WebGL is unsupported */}
+      {!isWebGLSupported && <WebGLFallback />}
 
-      <p className="mb-2 text-[10px] font-semibold tracking-widest text-indigo-400">
-        {tag}
-      </p>
+      {/* 3. Subtle Film Grain & Vignette Overlays for Scientific Instrument Aesthetic */}
+      <div className="grain-overlay" aria-hidden="true" />
+      <div className="vignette-overlay" aria-hidden="true" />
 
-      <h3 className="text-xl font-semibold">{title}</h3>
-
-      <p className="mt-3 min-h-12 text-sm leading-6 text-zinc-400">
-        {description}
-      </p>
-
-      <button
-        onClick={onClick}
-        className="mt-6 flex items-center gap-2 text-sm font-medium text-white transition group-hover:text-indigo-400"
-      >
-        {button}
-        <ArrowRight size={16} />
-      </button>
-
+      {/* 4. DOM Story Container with Scrubbed Panels & Editorial Typography */}
+      <StoryContainer
+        onLaunchApp={() => {
+          setAppOpen(true)
+          window.location.hash = '#editor'
+        }}
+      />
     </div>
   )
 }
-
-function TechItem({
-  name,
-  value,
-}: {
-  name: string
-  value: string
-}) {
-  return (
-    <div className="rounded-lg bg-zinc-900 p-4">
-      <p className="text-xs text-zinc-500">{name}</p>
-      <p className="mt-2 text-sm font-semibold">{value}</p>
-    </div>
-  )
-}
-
-export default App

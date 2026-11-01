@@ -14,4 +14,26 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (
+            id.includes('node_modules/three') ||
+            id.includes('node_modules/@react-three') ||
+            id.includes('node_modules/postprocessing')
+          ) {
+            return 'three-vendor'
+          }
+          if (id.includes('node_modules/gsap') || id.includes('node_modules/lenis')) {
+            return 'motion-vendor'
+          }
+          if (id.includes('node_modules/@xyflow') || id.includes('node_modules/@dagrejs')) {
+            return 'flow-vendor'
+          }
+        },
+      },
+    },
+  },
 })
