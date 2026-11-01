@@ -45,3 +45,4 @@ Or run unit tests:
 g++ -std=c++17 backend/tests/AutomataTests.cpp -I backend/include -o automata_tests.exe
 ./automata_tests.exe
 ```
+
