@@ -60,19 +60,19 @@ export default function ConversionHistory({
   useEffect(() => {
     if (!isPlaying || steps.length === 0) return
 
-    const timer = window.setInterval(() => {
-      setCurrentIndex((index) => {
-        if (index >= steps.length - 1) {
-          setIsPlaying(false)
-          return index
-        }
+    if (currentIndex >= steps.length - 1) {
+      setIsPlaying(false)
+      return
+    }
 
-        return index + 1
+    const timer = window.setTimeout(() => {
+      setCurrentIndex((index) => {
+        return Math.min(index + 1, steps.length - 1)
       })
     }, 1200)
 
-    return () => window.clearInterval(timer)
-  }, [isPlaying, steps.length])
+    return () => window.clearTimeout(timer)
+  }, [isPlaying, currentIndex, steps.length])
 
   if (steps.length === 0) {
     return (
